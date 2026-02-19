@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Find My Bus</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+:root {
+  --bg-dark: #0f172a;
+  --card-dark: #1e293b;
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
+  --accent-green: #16a34a;
+  --text-light: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border-soft: rgba(255,255,255,0.08);
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(145deg, #0f172a, #1e293b);
+  color: var(--text-light);
+}
+
+.header {
+  padding: 20px;
+  background: #0b1220;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.container {
+  padding: 20px;
+}
+
+.card {
+  max-width: 520px;
+  margin: auto;
+  background: var(--card-dark);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  border: 1px solid var(--border-soft);
+  min-height: 450px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.logo {
+  font-size: 60px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  background: #0f172a;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  color: var(--text-light);
+  font-size: 16px;
+}
+
+button {
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  margin-top: 20px;
+  font-size: 16px;
+  width: 100%;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.primary {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.primary:hover {
+  background: var(--accent-blue-hover);
+}
+
+.secondary {
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-light);
+}
+
+.hidden {
+  display: none;
+}
+
+.status {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.status.live {
+  color: var(--accent-green);
+}
+
+.status.historical {
+  color: var(--text-muted);
+}
+
+#map {
+  height: 350px;
+  border-radius: 16px;
+  margin-bottom: 15px;
+}
+
+.location-info {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">FLEET TRACKING</div>
+
+<div class="container">
+<div class="card">
+
+<!-- PAGE 1 -->
+<div id="page1">
+  <h1>Find My Bus</h1>
+  <div class="logo">🚌</div>
+  <label>Please enter bus number</label>
+  <input type="number" id="busNumber" placeholder="Bus Number" inputmode="numeric" pattern="[0-9]*">
+  <button class="primary" onclick="findBus()">Find Bus</button>
+</div>
+
+<!-- PAGE 2 -->
+<div id="page2" class="hidden">
+  <div id="status" class="status"></div>
+  <div id="map"></div>
+  <div id="locationInfo" class="location-info"></div>
+  <button class="secondary" onclick="goBack()">Find Another Bus</button>
+</div>
+
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+let map;
+let marker;
+let moveInterval;
+
+const melbourneCBD = [-37.8136, 144.9631];
+
+function randomWithin20km() {
+  const radius = 20000;
+  const angle = Math.random() * 2 * Math.PI;
+  const distance = Math.random() * radius;
+
+  const dx = distance * Math.cos(angle);
+  const dy = distance * Math.sin(angle);
+
+  const lat = melbourneCBD[0] + (dy / 111320);
+  const lng = melbourneCBD[1] + (dx / (111320 * Math.cos(melbourneCBD[0] * Math.PI / 180)));
+
+  return [lat, lng];
+}
+
+function findBus() {
+  const busNumber = document.getElementById("busNumber").value;
+  if (!busNumber) {
+    alert("Please enter a bus number.");
+    return;
+  }
+
+  document.getElementById("page1").classList.add("hidden");
+  document.getElementById("page2").classList.remove("hidden");
+
+  const coord = randomWithin20km();
+  const isLive = Math.random() > 0.5;
+  const statusEl = document.getElementById("status");
+
+  if (isLive) {
+    statusEl.innerText = "● LIVE";
+    statusEl.className = "status live";
+  } else {
+    statusEl.innerText = "● Historical - Last Known Location";
+    statusEl.className = "status historical";
+  }
+
+  if (map) map.remove();
+
+  map = L.map('map').setView(coord, 17);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  const busIcon = L.divIcon({
+    html: "🚌",
+    className: "",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
+  marker = L.marker(coord, { icon: busIcon }).addTo(map);
+
+  reverseGeocode(coord);
+
+  if (isLive) {
+    animateBus();
+  }
+}
+
+function animateBus() {
+  const speedKmh = 60;
+  const metersPerSecond = speedKmh * 1000 / 3600;
+
+  const direction = Math.random() * 2 * Math.PI;
+
+  moveInterval = setInterval(() => {
+    const latlng = marker.getLatLng();
+
+    const dx = metersPerSecond * Math.cos(direction);
+    const dy = metersPerSecond * Math.sin(direction);
+
+    const newLat = latlng.lat + (dy / 111320);
+    const newLng = latlng.lng + (dx / (111320 * Math.cos(latlng.lat * Math.PI / 180)));
+
+    const newPos = [newLat, newLng];
+
+    marker.setLatLng(newPos);
+    map.panTo(newPos, { animate: true, duration: 1 });
+
+  }, 1000);
+}
+
+function reverseGeocode(coord) {
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coord[0]}&lon=${coord[1]}`)
+    .then(res => res.json())
+    .then(data => {
+      const street = data.address.road || "Unknown Street";
+      const suburb = data.address.suburb || data.address.town || data.address.city || "";
+      document.getElementById("locationInfo").innerText =
+        `Nearest Location: ${street}, ${suburb}`;
+    })
+    .catch(() => {
+      document.getElementById("locationInfo").innerText =
+        "Location data unavailable.";
+    });
+}
+
+function goBack() {
+  document.getElementById("page2").classList.add("hidden");
+  document.getElementById("page1").classList.remove("hidden");
+  if (moveInterval) clearInterval(moveInterval);
+}
+</script>
+
+</body>
+</html>
