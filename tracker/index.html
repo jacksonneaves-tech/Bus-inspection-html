@@ -1,248 +1,172 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Find My Bus</title>
+<meta charset="utf-8" />
+<title>PTV Fleet Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet/dist/leaflet.css"
+/>
 
 <style>
 body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: white;
+  margin:0;
+  font-family: Arial;
+  text-align:center;
 }
 
-.card {
-  max-width: 520px;
-  margin: 40px auto;
-  background: #1e293b;
-  padding: 30px;
-  border-radius: 20px;
+#searchPage {
+  padding-top:100px;
 }
 
 input {
-  width: 130px;
-  padding: 12px;
-  display: block;
-  margin: 10px auto;
-  text-align: center;
-  font-size: 20px;
+  font-size:22px;
+  padding:10px;
+  width:140px;
+  text-align:center;
 }
 
 button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 15px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
+  font-size:18px;
+  padding:10px 20px;
+  margin-top:10px;
+  background:#007bff;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
 }
 
-button:hover {
-  background: #1d4ed8;
+#mapPage {
+  display:none;
 }
-
-.operator-btn {
-  background: #334155;
-}
-
-.status {
-  text-align:center;
-  font-weight:bold;
-  margin-bottom:5px;
-}
-
-.live { color:#16a34a; }
-.offline { color:#94a3b8; }
 
 #map {
-  height: 350px;
-  margin-top: 15px;
-  border-radius: 15px;
+  height:70vh;
 }
 
-.hidden { display:none; }
+#info {
+  padding:15px;
+}
 
-.timestamp {
-  text-align:center;
-  font-size:13px;
-  color:#94a3b8;
-  margin-bottom:10px;
+.status-live {
+  color:green;
+  font-weight:bold;
+}
+
+.status-offline {
+  color:red;
+  font-weight:bold;
 }
 </style>
 </head>
 <body>
 
-<div class="card">
-
-<div id="page1">
-  <h2 style="text-align:center;">Find My Bus</h2>
-  <input type="number" id="busNumber" placeholder="0000">
-  <button onclick="findBus()">Find Bus</button>
+<div id="searchPage">
+  <h2>Enter Fleet Number</h2>
+  <input id="fleetInput" maxlength="4" />
+  <br>
+  <button onclick="findOperators()">Search</button>
+  <div id="operatorSelect"></div>
 </div>
 
-<div id="operatorSelection" class="hidden">
-  <h3>Select Operator</h3>
-  <div id="operatorList"></div>
-</div>
-
-<div id="page2" class="hidden">
-  <div id="status" class="status"></div>
-  <div id="busTitle" style="text-align:center;font-weight:bold;"></div>
-  <div id="routeInfo" style="text-align:center;margin-bottom:5px;"></div>
-  <div class="timestamp" id="lastUpdated"></div>
+<div id="mapPage">
+  <div id="info"></div>
   <div id="map"></div>
   <button onclick="goBack()">Find Another Bus</button>
 </div>
 
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 const BACKEND = "https://ptv-gtfs-bus-backend.onrender.com";
 
-let map, marker, selectedBus, selectedOperator;
-let updateInterval;
-let currentLatLng;
+let map;
+let marker;
+let currentFleet;
+let currentOperator;
 
-async function findBus() {
-  const number = document.getElementById("busNumber").value;
-  if (!number) return alert("Enter bus number");
+async function findOperators() {
+  const fleet = document.getElementById("fleetInput").value.trim();
+  if (!fleet) return;
 
-  const res = await fetch(`${BACKEND}/bus/${number}`);
+  const res = await fetch(`${BACKEND}/operators/${fleet}`);
   const data = await res.json();
 
-  if (data.error === "not_found") {
-    alert("No active bus found with that number.");
+  if (data.error) {
+    alert("Fleet number not found.");
     return;
   }
 
-  if (data.length > 1) {
-    showOperatorSelection(number, data);
+  currentFleet = fleet;
+
+  if (data.operators.length === 1) {
+    loadBus(data.operators[0]);
   } else {
-    loadBus(number, data[0]);
+    const div = document.getElementById("operatorSelect");
+    div.innerHTML = "<h3>Select Operator</h3>";
+
+    data.operators.forEach(op => {
+      const btn = document.createElement("button");
+      btn.innerText = op;
+      btn.onclick = () => loadBus(op);
+      div.appendChild(document.createElement("br"));
+      div.appendChild(btn);
+    });
   }
 }
 
-function showOperatorSelection(number, data) {
-  document.getElementById("page1").classList.add("hidden");
-  document.getElementById("operatorSelection").classList.remove("hidden");
+async function loadBus(operator) {
+  currentOperator = operator;
 
-  const list = document.getElementById("operatorList");
-  list.innerHTML = "";
+  document.getElementById("searchPage").style.display = "none";
+  document.getElementById("mapPage").style.display = "block";
 
-  data.forEach(bus => {
-    const btn = document.createElement("button");
-    btn.className = "operator-btn";
-    btn.innerText = bus.operator;
-    btn.onclick = () => loadBus(number, bus);
-    list.appendChild(btn);
-  });
+  if (!map) {
+    map = L.map("map").setView([-37.81,144.96], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+  }
+
+  updateBus();
+  setInterval(updateBus, 10000);
 }
 
-function loadBus(number, bus) {
-  selectedBus = number;
-  selectedOperator = bus.operator;
+async function updateBus() {
+  const res = await fetch(`${BACKEND}/bus/${currentFleet}/${currentOperator}`);
+  const data = await res.json();
 
-  document.getElementById("operatorSelection").classList.add("hidden");
-  document.getElementById("page2").classList.remove("hidden");
+  if (data.error) {
+    alert("Bus not active.");
+    goBack();
+    return;
+  }
 
-  document.getElementById("busTitle").innerText =
-    `Bus ${number} - ${bus.operator}`;
+  const latlng = [data.latitude, data.longitude];
 
-  document.getElementById("routeInfo").innerText =
-    `Route: ${bus.route}`;
-
-  if (map) map.remove();
-
-  map = L.map('map').setView([bus.lat, bus.lon], 15);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-    .addTo(map);
-
-  marker = L.marker([bus.lat, bus.lon]).addTo(map);
-  currentLatLng = L.latLng(bus.lat, bus.lon);
-
-  updateStatus(bus.timestamp);
-  startLiveUpdates();
-}
-
-function updateStatus(timestamp) {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - timestamp;
-
-  const statusEl = document.getElementById("status");
-
-  if (diff < 90) {
-    statusEl.innerText = "● LIVE";
-    statusEl.className = "status live";
+  if (!marker) {
+    marker = L.marker(latlng).addTo(map);
   } else {
-    statusEl.innerText = "● OFFLINE (Last Known Location)";
-    statusEl.className = "status offline";
+    marker.setLatLng(latlng);
   }
 
-  const date = new Date(timestamp * 1000);
-  document.getElementById("lastUpdated").innerText =
-    "Last Updated: " + date.toLocaleString();
-}
+  map.setView(latlng);
 
-function smoothMove(newLat, newLon) {
-  const start = currentLatLng;
-  const end = L.latLng(newLat, newLon);
-  const duration = 1000;
-  const startTime = performance.now();
+  const date = new Date(data.timestamp * 1000);
 
-  function animate(time) {
-    const progress = Math.min((time - startTime) / duration, 1);
-
-    const lat = start.lat + (end.lat - start.lat) * progress;
-    const lon = start.lng + (end.lng - start.lng) * progress;
-
-    marker.setLatLng([lat, lon]);
-
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      currentLatLng = end;
-    }
-  }
-
-  requestAnimationFrame(animate);
-}
-
-function startLiveUpdates() {
-  updateInterval = setInterval(async () => {
-
-    const res = await fetch(`${BACKEND}/bus/${selectedBus}`);
-    const data = await res.json();
-
-    if (!data.error && data.length > 0) {
-
-      const bus = data.find(b => b.operator === selectedOperator) || data[0];
-
-      smoothMove(bus.lat, bus.lon);
-      map.panTo([bus.lat, bus.lon]);
-
-      document.getElementById("routeInfo").innerText =
-        `Route: ${bus.route}`;
-
-      updateStatus(bus.timestamp);
-    }
-
-  }, 30000);
+  document.getElementById("info").innerHTML = `
+    <h3>Fleet ${data.fleet} (${data.operator})</h3>
+    Route: ${data.routeId}<br>
+    Status: <span class="${data.live ? 'status-live' : 'status-offline'}">
+      ${data.live ? 'LIVE' : 'OFFLINE'}
+    </span><br>
+    Last Update: ${date.toLocaleTimeString()}
+  `;
 }
 
 function goBack() {
-  clearInterval(updateInterval);
-  document.getElementById("page2").classList.add("hidden");
-  document.getElementById("operatorSelection").classList.add("hidden");
-  document.getElementById("page1").classList.remove("hidden");
+  location.reload();
 }
 </script>
 
