@@ -1,172 +1,253 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>PTV Fleet Tracker</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Find My Bus</title>
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet/dist/leaflet.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
+:root {
+  --bg-dark: #0f172a;
+  --card-dark: #1e293b;
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
+  --accent-green: #16a34a;
+  --text-light: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border-soft: rgba(255,255,255,0.08);
+}
+
 body {
-  margin:0;
-  font-family: Arial;
-  text-align:center;
+  margin: 0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(145deg, #0f172a, #1e293b);
+  color: var(--text-light);
 }
 
-#searchPage {
-  padding-top:100px;
+.header {
+  padding: 20px;
+  background: #0b1220;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
-input {
-  font-size:22px;
-  padding:10px;
-  width:140px;
-  text-align:center;
+.container {
+  padding: 20px;
+}
+
+.card {
+  max-width: 520px;
+  margin: auto;
+  background: var(--card-dark);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  border: 1px solid var(--border-soft);
+  min-height: 480px;
+}
+
+h1 { text-align: center; }
+
+.logo {
+  font-size: 60px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input, select {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  background: #0f172a;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  color: var(--text-light);
+  font-size: 16px;
 }
 
 button {
-  font-size:18px;
-  padding:10px 20px;
-  margin-top:10px;
-  background:#007bff;
-  color:white;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  margin-top: 20px;
+  font-size: 16px;
+  width: 100%;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
-#mapPage {
-  display:none;
+.primary {
+  background: var(--accent-blue);
+  color: white;
 }
+.primary:hover { background: var(--accent-blue-hover); }
+
+.secondary {
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-light);
+}
+
+.hidden { display: none; }
+
+.status {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.status.live { color: var(--accent-green); }
+.status.historical { color: var(--text-muted); }
 
 #map {
-  height:70vh;
+  height: 350px;
+  border-radius: 16px;
+  margin-bottom: 15px;
 }
 
-#info {
-  padding:15px;
-}
-
-.status-live {
-  color:green;
-  font-weight:bold;
-}
-
-.status-offline {
-  color:red;
-  font-weight:bold;
+.location-info {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
 }
 </style>
 </head>
 <body>
 
-<div id="searchPage">
-  <h2>Enter Fleet Number</h2>
-  <input id="fleetInput" maxlength="4" />
-  <br>
-  <button onclick="findOperators()">Search</button>
-  <div id="operatorSelect"></div>
+<div class="header">FLEET TRACKING</div>
+
+<div class="container">
+<div class="card">
+
+<!-- PAGE 1 -->
+<div id="page1">
+  <h1>Find My Bus</h1>
+  <div class="logo">🚌</div>
+
+  <label>Please enter fleet number</label>
+  <input type="number" id="fleetNumber" placeholder="Fleet Number">
+
+  <div id="operatorSection" class="hidden">
+    <label>Select Operator</label>
+    <select id="operatorSelect"></select>
+  </div>
+
+  <button class="primary" onclick="findOperators()">Find Bus</button>
 </div>
 
-<div id="mapPage">
-  <div id="info"></div>
+<!-- PAGE 2 -->
+<div id="page2" class="hidden">
+  <div id="status" class="status"></div>
   <div id="map"></div>
-  <button onclick="goBack()">Find Another Bus</button>
+  <div id="locationInfo" class="location-info"></div>
+  <button class="secondary" onclick="goBack()">Find Another Bus</button>
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 const BACKEND = "https://ptv-gtfs-bus-backend.onrender.com";
 
 let map;
 let marker;
-let currentFleet;
-let currentOperator;
 
 async function findOperators() {
-  const fleet = document.getElementById("fleetInput").value.trim();
-  if (!fleet) return;
+  const fleet = document.getElementById("fleetNumber").value.trim();
+  if (!fleet) return alert("Please enter a fleet number.");
 
   const res = await fetch(`${BACKEND}/operators/${fleet}`);
   const data = await res.json();
 
-  if (data.error) {
-    alert("Fleet number not found.");
-    return;
-  }
-
-  currentFleet = fleet;
+  if (data.error) return alert("Fleet not found.");
 
   if (data.operators.length === 1) {
-    loadBus(data.operators[0]);
+    loadBus(fleet, data.operators[0]);
   } else {
-    const div = document.getElementById("operatorSelect");
-    div.innerHTML = "<h3>Select Operator</h3>";
-
+    const select = document.getElementById("operatorSelect");
+    select.innerHTML = "";
     data.operators.forEach(op => {
-      const btn = document.createElement("button");
-      btn.innerText = op;
-      btn.onclick = () => loadBus(op);
-      div.appendChild(document.createElement("br"));
-      div.appendChild(btn);
+      const option = document.createElement("option");
+      option.value = op;
+      option.textContent = op;
+      select.appendChild(option);
     });
+    document.getElementById("operatorSection").classList.remove("hidden");
+    select.onchange = () => loadBus(fleet, select.value);
   }
 }
 
-async function loadBus(operator) {
-  currentOperator = operator;
-
-  document.getElementById("searchPage").style.display = "none";
-  document.getElementById("mapPage").style.display = "block";
-
-  if (!map) {
-    map = L.map("map").setView([-37.81,144.96], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-  }
-
-  updateBus();
-  setInterval(updateBus, 10000);
-}
-
-async function updateBus() {
-  const res = await fetch(`${BACKEND}/bus/${currentFleet}/${currentOperator}`);
+async function loadBus(fleet, operator) {
+  const res = await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
   const data = await res.json();
 
   if (data.error) {
     alert("Bus not active.");
-    goBack();
     return;
   }
 
-  const latlng = [data.latitude, data.longitude];
+  document.getElementById("page1").classList.add("hidden");
+  document.getElementById("page2").classList.remove("hidden");
 
-  if (!marker) {
-    marker = L.marker(latlng).addTo(map);
+  const statusEl = document.getElementById("status");
+
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - data.timestamp;
+
+  if (diff < 120) {
+    statusEl.innerText = `● LIVE — ${data.operator}`;
+    statusEl.className = "status live";
   } else {
-    marker.setLatLng(latlng);
+    statusEl.innerText = `● Historical — ${data.operator}`;
+    statusEl.className = "status historical";
   }
 
-  map.setView(latlng);
+  const coord = [data.latitude, data.longitude];
 
-  const date = new Date(data.timestamp * 1000);
+  if (map) map.remove();
+  map = L.map('map').setView(coord, 16);
 
-  document.getElementById("info").innerHTML = `
-    <h3>Fleet ${data.fleet} (${data.operator})</h3>
-    Route: ${data.routeId}<br>
-    Status: <span class="${data.live ? 'status-live' : 'status-offline'}">
-      ${data.live ? 'LIVE' : 'OFFLINE'}
-    </span><br>
-    Last Update: ${date.toLocaleTimeString()}
-  `;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    .addTo(map);
+
+  const busIcon = L.divIcon({
+    html: "🚌",
+    className: "",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
+  marker = L.marker(coord, { icon: busIcon }).addTo(map);
+
+  reverseGeocode(coord);
+}
+
+function reverseGeocode(coord) {
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coord[0]}&lon=${coord[1]}`)
+    .then(res => res.json())
+    .then(data => {
+      const street = data.address.road || "Unknown Street";
+      const suburb = data.address.suburb || data.address.town || data.address.city || "";
+      document.getElementById("locationInfo").innerText =
+        `Nearest Location: ${street}, ${suburb}`;
+    })
+    .catch(() => {
+      document.getElementById("locationInfo").innerText =
+        "Location data unavailable.";
+    });
 }
 
 function goBack() {
-  location.reload();
+  document.getElementById("page2").classList.add("hidden");
+  document.getElementById("page1").classList.remove("hidden");
+  document.getElementById("operatorSection").classList.add("hidden");
 }
 </script>
 
