@@ -58,18 +58,48 @@ h1 { text-align: center; }
   margin-bottom: 20px;
 }
 
-input, select {
-  width: 100%;
+/* Centered compact input */
+.input-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+input[type="number"] {
+  width: 140px;
   padding: 14px;
-  margin-top: 10px;
+  text-align: center;
   background: #0f172a;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   color: var(--text-light);
-  font-size: 16px;
+  font-size: 18px;
 }
 
-button {
+/* Operator buttons */
+.operator-buttons {
+  margin-top: 20px;
+}
+
+.operator-btn {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  color: var(--text-light);
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.operator-btn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+button.primary {
   padding: 14px;
   border-radius: 12px;
   border: none;
@@ -78,19 +108,23 @@ button {
   font-size: 16px;
   width: 100%;
   font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.primary {
   background: var(--accent-blue);
   color: white;
+  transition: 0.2s ease;
 }
-.primary:hover { background: var(--accent-blue-hover); }
+
+button.primary:hover {
+  background: var(--accent-blue-hover);
+}
 
 .secondary {
   background: transparent;
   border: 1px solid var(--border-soft);
   color: var(--text-light);
+  padding: 14px;
+  border-radius: 12px;
+  width: 100%;
+  cursor: pointer;
 }
 
 .hidden { display: none; }
@@ -114,6 +148,7 @@ button {
   font-size: 14px;
   color: var(--text-muted);
   margin-bottom: 10px;
+  text-align: center;
 }
 </style>
 </head>
@@ -129,15 +164,13 @@ button {
   <h1>Find My Bus</h1>
   <div class="logo">🚌</div>
 
-  <label>Please enter fleet number</label>
-  <input type="number" id="fleetNumber" placeholder="Fleet Number">
-
-  <div id="operatorSection" class="hidden">
-    <label>Select Operator</label>
-    <select id="operatorSelect"></select>
+  <div class="input-wrapper">
+    <input type="number" id="fleetNumber" placeholder="Fleet #" />
   </div>
 
   <button class="primary" onclick="findOperators()">Find Bus</button>
+
+  <div id="operatorSection" class="operator-buttons hidden"></div>
 </div>
 
 <!-- PAGE 2 -->
@@ -171,16 +204,17 @@ async function findOperators() {
   if (data.operators.length === 1) {
     loadBus(fleet, data.operators[0]);
   } else {
-    const select = document.getElementById("operatorSelect");
-    select.innerHTML = "";
+    const container = document.getElementById("operatorSection");
+    container.innerHTML = "";
+    container.classList.remove("hidden");
+
     data.operators.forEach(op => {
-      const option = document.createElement("option");
-      option.value = op;
-      option.textContent = op;
-      select.appendChild(option);
+      const btn = document.createElement("button");
+      btn.className = "operator-btn";
+      btn.innerText = op;
+      btn.onclick = () => loadBus(fleet, op);
+      container.appendChild(btn);
     });
-    document.getElementById("operatorSection").classList.remove("hidden");
-    select.onchange = () => loadBus(fleet, select.value);
   }
 }
 
@@ -197,7 +231,6 @@ async function loadBus(fleet, operator) {
   document.getElementById("page2").classList.remove("hidden");
 
   const statusEl = document.getElementById("status");
-
   const now = Math.floor(Date.now() / 1000);
   const diff = now - data.timestamp;
 
