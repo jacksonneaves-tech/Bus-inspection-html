@@ -135,21 +135,17 @@ h1 { text-align: center; }
   max-height: 80px;
 }
   
-  /* Animated Bus Marker */
+/* Animated Bus Marker */
 .bus-marker {
-  width: 70px;
-  height: 70px;
+  font-size: 42px;
   animation: floatBus 2s ease-in-out infinite;
-}
-
-.bus-marker img {
-  width: 100%;
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6));
+  text-align: center;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5));
 }
 
 @keyframes floatBus {
   0% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-5px); }
   100% { transform: translateY(0px); }
 }
   
@@ -293,18 +289,22 @@ async function loadBus(fleet, operator) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
     .addTo(map);
 
- const busIcon = L.divIcon({
+const busIcon = L.divIcon({
   html: `
     <div class="bus-marker">
-      <img src="https://cdn-icons-png.flaticon.com/512/61/61231.png" />
+      🚌
     </div>
   `,
   className: "",
-  iconSize: [70, 70],
-  iconAnchor: [35, 35]
+  iconSize: [60, 60],
+  iconAnchor: [30, 30]
 });
 
-marker = L.marker(coord, { icon: busIcon }).addTo(map);
+if (marker) {
+  marker.setLatLng(coord);
+} else {
+  marker = L.marker(coord, { icon: busIcon }).addTo(map);
+}
 
   reverseGeocode(coord);
 }
