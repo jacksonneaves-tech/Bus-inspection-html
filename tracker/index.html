@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Find My Bus</title>
+<title>Fleet Tracking</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
@@ -13,7 +13,6 @@
   --card-dark: #1e293b;
   --accent-blue: #2563eb;
   --accent-blue-hover: #1d4ed8;
-  --accent-green: #16a34a;
   --text-light: #f1f5f9;
   --text-muted: #94a3b8;
   --border-soft: rgba(255,255,255,0.08);
@@ -35,9 +34,7 @@ body {
   letter-spacing: 1px;
 }
 
-.container {
-  padding: 20px;
-}
+.container { padding: 20px; }
 
 .card {
   max-width: 520px;
@@ -47,99 +44,35 @@ body {
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.4);
   border: 1px solid var(--border-soft);
-  min-height: 480px;
+  min-height: 520px;
 }
 
 h1 { text-align: center; }
 
-.logo {
-  font-size: 60px;
+.logo-large {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
-/* Centered compact input */
-.input-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-top: 15px;
+.logo-large img {
+  max-height: 60px;
 }
 
-input[type="number"] {
-  width: 140px;
-  padding: 14px;
+.fleet-display {
   text-align: center;
-  background: #0f172a;
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  color: var(--text-light);
-  font-size: 18px;
-}
-
-/* Operator buttons */
-.operator-buttons {
-  margin-top: 20px;
-}
-
-.operator-btn {
-  width: 100%;
-  padding: 14px;
-  margin-top: 10px;
-  background: transparent;
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  color: var(--text-light);
-  font-size: 15px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.operator-btn:hover {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
-}
-
-button.primary {
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  cursor: pointer;
-  margin-top: 20px;
-  font-size: 16px;
-  width: 100%;
+  font-size: 28px;
   font-weight: 600;
-  background: var(--accent-blue);
-  color: white;
-  transition: 0.2s ease;
+  margin-bottom: 15px;
 }
 
-button.primary:hover {
-  background: var(--accent-blue-hover);
-}
-
-.secondary {
-  background: transparent;
-  border: 1px solid var(--border-soft);
-  color: var(--text-light);
-  padding: 14px;
-  border-radius: 12px;
-  width: 100%;
-  cursor: pointer;
-}
-
-.hidden { display: none; }
-
-.status {
+.bus-graphic {
   text-align: center;
-  font-weight: 600;
+  font-size: 100px;
   margin-bottom: 10px;
 }
 
-.status.live { color: var(--accent-green); }
-.status.historical { color: var(--text-muted); }
-
 #map {
-  height: 350px;
+  height: 320px;
   border-radius: 16px;
   margin-bottom: 15px;
 }
@@ -147,8 +80,69 @@ button.primary:hover {
 .location-info {
   font-size: 14px;
   color: var(--text-muted);
-  margin-bottom: 10px;
   text-align: center;
+}
+
+/* Fleet display box */
+.fleet-input-display {
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: 4px;
+  padding: 15px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  min-height: 32px;
+}
+
+/* Keypad */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.keypad button {
+  padding: 18px;
+  font-size: 20px;
+  border-radius: 14px;
+  border: none;
+  background: #0f172a;
+  color: var(--text-light);
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+}
+
+.keypad button:hover {
+  background: var(--accent-blue);
+}
+
+.operator-buttons button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-light);
+  cursor: pointer;
+}
+
+.operator-buttons button:hover {
+  background: var(--accent-blue);
+}
+
+.hidden { display: none; }
+
+.secondary {
+  margin-top: 20px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-light);
+  cursor: pointer;
 }
 </style>
 </head>
@@ -161,23 +155,38 @@ button.primary:hover {
 
 <!-- PAGE 1 -->
 <div id="page1">
-  <h1>Find My Bus</h1>
-  <div class="logo">🚌</div>
+  <h1>Enter Fleet Number</h1>
 
-  <div class="input-wrapper">
-    <input type="number" id="fleetNumber" placeholder="Fleet #" />
+  <div class="fleet-input-display" id="fleetDisplay"></div>
+
+  <div class="keypad" id="keypad">
+    <button onclick="addDigit(1)">1</button>
+    <button onclick="addDigit(2)">2</button>
+    <button onclick="addDigit(3)">3</button>
+    <button onclick="addDigit(4)">4</button>
+    <button onclick="addDigit(5)">5</button>
+    <button onclick="addDigit(6)">6</button>
+    <button onclick="addDigit(7)">7</button>
+    <button onclick="addDigit(8)">8</button>
+    <button onclick="addDigit(9)">9</button>
+    <button onclick="clearFleet()">C</button>
+    <button onclick="addDigit(0)">0</button>
+    <button onclick="backspace()">⌫</button>
   </div>
 
-  <button class="primary" onclick="findOperators()">Find Bus</button>
-
-  <div id="operatorSection" class="operator-buttons hidden"></div>
+  <div class="operator-buttons hidden" id="operatorSection"></div>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
-  <div id="status" class="status"></div>
+
+  <div class="logo-large" id="operatorLogo"></div>
+  <div class="fleet-display" id="fleetLabel"></div>
+  <div class="bus-graphic">🚌</div>
+
   <div id="map"></div>
   <div id="locationInfo" class="location-info"></div>
+
   <button class="secondary" onclick="goBack()">Find Another Bus</button>
 </div>
 
@@ -189,30 +198,49 @@ button.primary:hover {
 <script>
 const BACKEND = "https://ptv-gtfs-bus-backend.onrender.com";
 
+let fleetNumber = "";
 let map;
 let marker;
 
-async function findOperators() {
-  const fleet = document.getElementById("fleetNumber").value.trim();
-  if (!fleet) return alert("Please enter a fleet number.");
+function addDigit(num) {
+  if (fleetNumber.length >= 6) return;
+  fleetNumber += num;
+  document.getElementById("fleetDisplay").innerText = fleetNumber;
+  checkFleet();
+}
 
-  const res = await fetch(`${BACKEND}/operators/${fleet}`);
+function backspace() {
+  fleetNumber = fleetNumber.slice(0, -1);
+  document.getElementById("fleetDisplay").innerText = fleetNumber;
+}
+
+function clearFleet() {
+  fleetNumber = "";
+  document.getElementById("fleetDisplay").innerText = "";
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("keypad").classList.remove("hidden");
+}
+
+async function checkFleet() {
+  if (fleetNumber.length < 2) return;
+
+  const res = await fetch(`${BACKEND}/operators/${fleetNumber}`);
   const data = await res.json();
 
-  if (data.error) return alert("Fleet not found.");
+  if (data.error) return;
 
   if (data.operators.length === 1) {
-    loadBus(fleet, data.operators[0]);
+    loadBus(fleetNumber, data.operators[0]);
   } else {
     const container = document.getElementById("operatorSection");
     container.innerHTML = "";
     container.classList.remove("hidden");
+    document.getElementById("keypad").classList.add("hidden");
 
     data.operators.forEach(op => {
       const btn = document.createElement("button");
-      btn.className = "operator-btn";
       btn.innerText = op;
-      btn.onclick = () => loadBus(fleet, op);
+      btn.onclick = () => loadBus(fleetNumber, op);
       container.appendChild(btn);
     });
   }
@@ -221,26 +249,25 @@ async function findOperators() {
 async function loadBus(fleet, operator) {
   const res = await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
   const data = await res.json();
-
-  if (data.error) {
-    alert("Bus not active.");
-    return;
-  }
+  if (data.error) return alert("Bus not active.");
 
   document.getElementById("page1").classList.add("hidden");
   document.getElementById("page2").classList.remove("hidden");
 
-  const statusEl = document.getElementById("status");
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - data.timestamp;
+  document.getElementById("fleetLabel").innerText = `Fleet ${fleet}`;
 
-  if (diff < 120) {
-    statusEl.innerText = `● LIVE — ${data.operator}`;
-    statusEl.className = "status live";
-  } else {
-    statusEl.innerText = `● Historical — ${data.operator}`;
-    statusEl.className = "status historical";
-  }
+  const logoMap = {
+    "Dysons": "logos/dysons.png",
+    "CDC Wyndham": "logos/cdc.png",
+    "CDC Oakleigh": "logos/cdc.png",
+    "Ventura": "logos/ventura.png",
+    "Kinetic": "logos/kinetic.png",
+    "Skybus": "logos/skybus.png",
+  };
+
+  const logoSrc = logoMap[operator] || "";
+  document.getElementById("operatorLogo").innerHTML =
+    logoSrc ? `<img src="${logoSrc}">` : operator;
 
   const coord = [data.latitude, data.longitude];
 
@@ -250,14 +277,7 @@ async function loadBus(fleet, operator) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
     .addTo(map);
 
-  const busIcon = L.divIcon({
-    html: "🚌",
-    className: "",
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
-
-  marker = L.marker(coord, { icon: busIcon }).addTo(map);
+  marker = L.marker(coord).addTo(map);
 
   reverseGeocode(coord);
 }
@@ -266,21 +286,17 @@ function reverseGeocode(coord) {
   fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coord[0]}&lon=${coord[1]}`)
     .then(res => res.json())
     .then(data => {
-      const street = data.address.road || "Unknown Street";
-      const suburb = data.address.suburb || data.address.town || data.address.city || "";
+      const street = data.address.road || "";
+      const suburb = data.address.suburb || data.address.city || "";
       document.getElementById("locationInfo").innerText =
-        `Nearest Location: ${street}, ${suburb}`;
-    })
-    .catch(() => {
-      document.getElementById("locationInfo").innerText =
-        "Location data unavailable.";
+        `${street}, ${suburb}`;
     });
 }
 
 function goBack() {
   document.getElementById("page2").classList.add("hidden");
   document.getElementById("page1").classList.remove("hidden");
-  document.getElementById("operatorSection").classList.add("hidden");
+  clearFleet();
 }
 </script>
 
