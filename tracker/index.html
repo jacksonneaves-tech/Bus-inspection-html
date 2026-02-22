@@ -44,6 +44,7 @@ body {
   box-shadow: 0 20px 40px rgba(0,0,0,0.4);
   border: 1px solid var(--border-soft);
   min-height: 520px;
+  position: relative; /* Allow overlay badge to anchor inside */
 }
 
 h1 { text-align: center; }
@@ -148,7 +149,45 @@ h1 { text-align: center; }
   50% { transform: translateY(-5px); }
   100% { transform: translateY(0px); }
 }
-  
+
+/* Navigation badge overlay (distance + direction) */
+.nav-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-soft);
+  color: var(--text-light);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-badge .arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+}
+
+.nav-badge .label {
+  font-weight: 600;
+}
+
+/* Optional line styling between user and bus */
+.path-line {
+  color: #60a5fa; /* blue-400 */
+  opacity: 0.9;
+}
+
+/* User marker style */
+.user-marker {
+  box-shadow: 0 0 0 2px #10b981; /* green ring */
+}
 </style>
 </head>
 <body>
@@ -156,49 +195,55 @@ h1 { text-align: center; }
 <div class="header">FLEET TRACKING</div>
 
 <div class="container">
-<div class="card">
+  <div class="card">
 
-<!-- PAGE 1 -->
-<div id="page1">
-  <h1>Enter Fleet Number</h1>
+    <!-- PAGE 1 -->
+    <div id="page1">
+      <h1>Enter Fleet Number</h1>
 
-  <div class="fleet-display" id="fleetDisplay"></div>
+      <div class="fleet-display" id="fleetDisplay"></div>
 
-  <div class="keypad" id="keypad">
-    <button onclick="addDigit(1)">1</button>
-    <button onclick="addDigit(2)">2</button>
-    <button onclick="addDigit(3)">3</button>
-    <button onclick="addDigit(4)">4</button>
-    <button onclick="addDigit(5)">5</button>
-    <button onclick="addDigit(6)">6</button>
-    <button onclick="addDigit(7)">7</button>
-    <button onclick="addDigit(8)">8</button>
-    <button onclick="addDigit(9)">9</button>
-    <button onclick="clearFleet()">C</button>
-    <button onclick="addDigit(0)">0</button>
-    <button onclick="backspace()">⌫</button>
+      <div class="keypad" id="keypad">
+        <button onclick="addDigit(1)">1</button>
+        <button onclick="addDigit(2)">2</button>
+        <button onclick="addDigit(3)">3</button>
+        <button onclick="addDigit(4)">4</button>
+        <button onclick="addDigit(5)">5</button>
+        <button onclick="addDigit(6)">6</button>
+        <button onclick="addDigit(7)">7</button>
+        <button onclick="addDigit(8)">8</button>
+        <button onclick="addDigit(9)">9</button>
+        <button onclick="clearFleet()">C</button>
+        <button onclick="addDigit(0)">0</button>
+        <button onclick="backspace()">⌫</button>
+      </div>
+
+      <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
+
+      <div class="operator-buttons hidden" id="operatorSection"></div>
+      <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
+    </div>
+
+    <!-- PAGE 2 -->
+    <div id="page2" class="hidden">
+
+      <div class="operator-logo" id="operatorLogo"></div>
+
+      <!-- Distance + Direction badge -->
+      <div id="navBadge" class="nav-badge hidden" aria-live="polite">
+        <span class="arrow">➤</span>
+        <span class="label" id="navText">Locating…</span>
+      </div>
+
+      <div id="map"></div>
+
+      <div id="locationInfo" class="location-info"></div>
+
+      <button class="find-btn" onclick="goBack()">Find Another Bus</button>
+
+    </div>
+
   </div>
-
-  <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
-
-  <div class="operator-buttons hidden" id="operatorSection"></div>
-  <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
-</div>
-
-<!-- PAGE 2 -->
-<div id="page2" class="hidden">
-
-  <div class="operator-logo" id="operatorLogo"></div>
-
-  <div id="map"></div>
-
-  <div id="locationInfo" class="location-info"></div>
-
-  <button class="find-btn" onclick="goBack()">Find Another Bus</button>
-
-</div>
-
-</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -208,8 +253,16 @@ const BACKEND = "https://ptv-gtfs-bus-backend.onrender.com";
 
 let fleetNumber = "";
 let map;
-let marker;
+let marker;        // bus marker
+let userMarker;    // user marker (circle)
+let userAccuracy;  // accuracy circle
+let pathLine;      // polyline user->bus
+let userLatLng;    // L.latLng
+let busLatLng;     // L.latLng
+let watchId = null;
+let hasFitBoundsOnce = false;
 
+// ----- UI input handlers -----
 function addDigit(num) {
   if (fleetNumber.length >= 6) return;
   fleetNumber += num;
@@ -236,94 +289,263 @@ function returnToKeypad() {
 async function findBus() {
   if (!fleetNumber) return alert("Enter fleet number.");
 
-  const res = await fetch(`${BACKEND}/operators/${fleetNumber}`);
-  const data = await res.json();
+  try {
+    const res = await fetch(`${BACKEND}/operators/${fleetNumber}`);
+    const data = await res.json();
 
-  if (data.error) return alert("Fleet not found.");
+    if (data.error) return alert("Fleet not found.");
 
-  if (data.operators.length === 1) {
-    loadBus(fleetNumber, data.operators[0]);
-  } else {
-    const container = document.getElementById("operatorSection");
-    container.innerHTML = "";
-    container.classList.remove("hidden");
+    if (data.operators.length === 1) {
+      loadBus(fleetNumber, data.operators[0]);
+    } else {
+      const container = document.getElementById("operatorSection");
+      container.innerHTML = "";
+      container.classList.remove("hidden");
 
-    document.getElementById("keypad").classList.add("hidden");
-    document.getElementById("findButton").classList.add("hidden");
-    document.getElementById("operatorBackButton").classList.remove("hidden");
+      document.getElementById("keypad").classList.add("hidden");
+      document.getElementById("findButton").classList.add("hidden");
+      document.getElementById("operatorBackButton").classList.remove("hidden");
 
-    data.operators.forEach(op => {
-      const btn = document.createElement("button");
-      btn.innerText = op;
-      btn.onclick = () => loadBus(fleetNumber, op);
-      container.appendChild(btn);
-    });
+      data.operators.forEach(op => {
+        const btn = document.createElement("button");
+        btn.innerText = op;
+        btn.onclick = () => loadBus(fleetNumber, op);
+        container.appendChild(btn);
+      });
+    }
+  } catch (e) {
+    alert("Could not reach server.");
+    console.error(e);
   }
 }
 
 async function loadBus(fleet, operator) {
-  const res = await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
-  const data = await res.json();
-  if (data.error) return alert("Bus not active.");
+  try {
+    const res = await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
+    const data = await res.json();
+    if (data.error) return alert("Bus not active.");
 
-  document.getElementById("page1").classList.add("hidden");
-  document.getElementById("page2").classList.remove("hidden");
+    document.getElementById("page1").classList.add("hidden");
+    document.getElementById("page2").classList.remove("hidden");
 
-  const logoMap = {
-    "Dysons": "logos/dysons.png",
-    "CDC Wyndham": "logos/cdc.png",
-    "CDC Oakleigh": "logos/cdc.png",
-    "Ventura": "logos/ventura.png",
-    "Kinetic": "logos/kinetic.png",
-    "Skybus": "logos/skybus.png"
-  };
+    const logoMap = {
+      "Dysons": "logos/dysons.png",
+      "CDC Wyndham": "logos/cdc.png",
+      "CDC Oakleigh": "logos/cdc.png",
+      "Ventura": "logos/ventura.png",
+      "Kinetic": "logos/kinetic.png",
+      "Skybus": "logos/skybus.png"
+    };
 
-  document.getElementById("operatorLogo").innerHTML =
-    `<img src="${logoMap[operator] || ''}">`;
+    document.getElementById("operatorLogo").innerHTML =
+      `<img src="${logoMap[operator] || ''}" alt="${operator}">`;
 
-  const coord = [data.latitude, data.longitude];
+    const coord = [data.latitude, data.longitude];
+    busLatLng = L.latLng(coord[0], coord[1]);
 
-  if (map) map.remove();
-  map = L.map('map').setView(coord, 16);
+    // (Re)create map
+    if (map) map.remove();
+    map = L.map('map').setView(coord, 16);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-    .addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 20,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
 
-const busIcon = L.divIcon({
-  html: `
-    <div class="bus-marker">
-      🚌
-    </div>
-  `,
-  className: "",
-  iconSize: [60, 60],
-  iconAnchor: [30, 30]
-});
+    const busIcon = L.divIcon({
+      html: `
+        <div class="bus-marker">
+          🚌
+        </div>
+      `,
+      className: "",
+      iconSize: [60, 60],
+      iconAnchor: [30, 30]
+    });
 
-if (marker) {
-  marker.setLatLng(coord);
-} else {
-  marker = L.marker(coord, { icon: busIcon }).addTo(map);
+    if (marker) {
+      marker.setLatLng(coord);
+    } else {
+      marker = L.marker(coord, { icon: busIcon }).addTo(map);
+    }
+
+    reverseGeocode(coord);
+
+    // Start tracking the user and update UI
+    startUserLocation();
+
+    // OPTIONAL: Poll bus location every 10s for live updates
+    // window._busPoll = setInterval(async () => {
+    //   try {
+    //     const r = await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
+    //     const d = await r.json();
+    //     if (!d.error) {
+    //       busLatLng = L.latLng(d.latitude, d.longitude);
+    //       marker.setLatLng(busLatLng);
+    //       updatePathAndBadge();
+    //     }
+    //   } catch (e) {
+    //     console.warn('Bus poll failed', e);
+    //   }
+    // }, 10000);
+
+  } catch (e) {
+    alert("Could not reach server.");
+    console.error(e);
+  }
 }
 
-  reverseGeocode(coord);
-}
-
+// Reverse geocode BUS location only (as in your original)
 function reverseGeocode(coord) {
   fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coord[0]}&lon=${coord[1]}`)
     .then(res => res.json())
     .then(data => {
-      const street = data.address.road || "";
-      const suburb = data.address.suburb || data.address.city || "";
+      const street = (data.address && (data.address.road || "")) || "";
+      const suburb = (data.address && (data.address.suburb || data.address.city || "")) || "";
       document.getElementById("locationInfo").innerText =
-        `${street}, ${suburb}`;
+        `${street}${street && suburb ? ', ' : ''}${suburb}`;
+    })
+    .catch(() => {
+      // Silent fail
     });
 }
 
+// ---- NEW: Geolocation + navigation badge ----
+function startUserLocation() {
+  const navBadge = document.getElementById('navBadge');
+  const navText  = document.getElementById('navText');
+
+  if (!('geolocation' in navigator)) {
+    navText.textContent = 'Geolocation not supported';
+    navBadge.classList.remove('hidden');
+    return;
+  }
+
+  watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      userLatLng = L.latLng(latitude, longitude);
+
+      // Create/update user marker
+      if (!userMarker) {
+        userMarker = L.circleMarker(userLatLng, {
+          radius: 6,
+          color: '#10b981',
+          fillColor: '#10b981',
+          fillOpacity: 1,
+          className: 'user-marker'
+        }).addTo(map);
+      } else {
+        userMarker.setLatLng(userLatLng);
+      }
+
+      // Accuracy circle
+      if (!userAccuracy) {
+        userAccuracy = L.circle(userLatLng, {
+          radius: accuracy || 25,
+          color: '#10b981',
+          fillColor: '#10b981',
+          fillOpacity: 0.15,
+          weight: 1
+        }).addTo(map);
+      } else {
+        userAccuracy.setLatLng(userLatLng);
+        userAccuracy.setRadius(accuracy || 25);
+      }
+
+      updatePathAndBadge();
+
+      // Fit bounds once so both markers are visible initially
+      if (!hasFitBoundsOnce && busLatLng) {
+        hasFitBoundsOnce = true;
+        const bounds = L.latLngBounds([userLatLng, busLatLng]).pad(0.2);
+        map.fitBounds(bounds);
+      }
+    },
+    (err) => {
+      navText.textContent = 'Location permission denied';
+      navBadge.classList.remove('hidden');
+      console.warn('Geolocation error:', err);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 5000
+    }
+  );
+}
+
+function updatePathAndBadge() {
+  if (!map || !userLatLng || !busLatLng) return;
+
+  // Draw / update the connecting line
+  if (!pathLine) {
+    pathLine = L.polyline([userLatLng, busLatLng], {
+      className: 'path-line',
+      weight: 3
+    }).addTo(map);
+  } else {
+    pathLine.setLatLngs([userLatLng, busLatLng]);
+  }
+
+  // Compute distance and bearing
+  const distanceM = map.distance(userLatLng, busLatLng); // meters
+  const bearingDeg = bearing(userLatLng, busLatLng);     // 0..360
+  const compass = bearingToCompassSlash(bearingDeg);     // e.g., "S/E"
+
+  // Format text + rotate arrow
+  const navBadge = document.getElementById('navBadge');
+  const navText  = document.getElementById('navText');
+  const arrowEl  = navBadge.querySelector('.arrow');
+
+  // Optional: customize near-zero distance UX
+  // if (distanceM < 10) {
+  //   navText.textContent = 'You are at the bus';
+  // } else {
+    navText.textContent = `${formatDistance(distanceM)} ${compass}`;
+  // }
+
+  // The "➤" arrow points EAST by default.
+  // Bearings are 0°=North, clockwise, so rotate by (bearing - 90°).
+  arrowEl.style.transform = `rotate(${bearingDeg - 90}deg)`;
+
+  navBadge.classList.remove('hidden');
+}
+
+// Bearing from point A to B (degrees 0..360, 0 = North)
+function bearing(from, to) {
+  const φ1 = toRad(from.lat);
+  const φ2 = toRad(to.lat);
+  const Δλ = toRad(to.lng - from.lng);
+
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) -
+            Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+
+  const θ = Math.atan2(y, x);
+  const deg = (toDeg(θ) + 360) % 360;
+  return deg;
+}
+
+// Convert to "N/E", "E", "S/W" style (8-wind, slash format)
+function bearingToCompassSlash(deg) {
+  const sectors = ['N', 'N/E', 'E', 'S/E', 'S', 'S/W', 'W', 'N/W'];
+  const idx = Math.round(deg / 45) % 8;
+  return sectors[idx];
+}
+
+function formatDistance(meters) {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function toRad(d) { return d * Math.PI / 180; }
+function toDeg(r) { return r * 180 / Math.PI; }
+
+// ----- Navigation -----
 function goBack() {
   // Hide map page
   document.getElementById("page2").classList.add("hidden");
-
   // Show keypad page
   document.getElementById("page1").classList.remove("hidden");
 
@@ -338,16 +560,35 @@ function goBack() {
   // Hide operator back button
   document.getElementById("operatorBackButton").classList.add("hidden");
 
-  // Show keypad + Find button again
-  document.getElementById("keypad").classList.remove("hidden");
-  document.getElementById("findButton").classList.remove("hidden");
+  // Hide badge
+  document.getElementById('navBadge').classList.add('hidden');
 
-  // Optional: clear map instance cleanly
+  // Clear geolocation watcher and bus polling
+  if (watchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+  if (window._busPoll) {
+    clearInterval(window._busPoll);
+    window._busPoll = null;
+  }
+  hasFitBoundsOnce = false;
+
+  // Clear map instance
   if (map) {
     map.remove();
     map = null;
     marker = null;
+    userMarker = null;
+    userAccuracy = null;
+    pathLine = null;
+    userLatLng = null;
+    busLatLng = null;
   }
+
+  // Show keypad + Find button again
+  document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
 }
 </script>
 
