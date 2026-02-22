@@ -115,7 +115,7 @@ h1 { text-align: center; }
 .hidden { display: none; }
 
 #map {
-  height: 400px;
+  height: 420px;
   border-radius: 16px;
   margin-bottom: 15px;
 }
@@ -124,10 +124,6 @@ h1 { text-align: center; }
   font-size: 14px;
   color: var(--text-muted);
   text-align: center;
-}
-
-.logo-large img {
-  max-height: 70px;
 }
 </style>
 </head>
@@ -159,14 +155,13 @@ h1 { text-align: center; }
     <button onclick="backspace()">⌫</button>
   </div>
 
-  <button class="find-btn" onclick="findBus()">Find Bus</button>
+  <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
 
   <div class="operator-buttons hidden" id="operatorSection"></div>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
-  <div class="logo-large" id="operatorLogo" style="text-align:center;margin-bottom:10px;"></div>
   <div id="map"></div>
   <div id="locationInfo" class="location-info"></div>
   <button class="find-btn" onclick="goBack()">Find Another Bus</button>
@@ -199,7 +194,9 @@ function clearFleet() {
   fleetNumber = "";
   document.getElementById("fleetDisplay").innerText = "";
   document.getElementById("operatorSection").classList.add("hidden");
+
   document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
 }
 
 async function findBus() {
@@ -216,7 +213,10 @@ async function findBus() {
     const container = document.getElementById("operatorSection");
     container.innerHTML = "";
     container.classList.remove("hidden");
+
+    // Hide keypad + find button
     document.getElementById("keypad").classList.add("hidden");
+    document.getElementById("findButton").classList.add("hidden");
 
     data.operators.forEach(op => {
       const btn = document.createElement("button");
@@ -236,16 +236,13 @@ async function loadBus(fleet, operator) {
   document.getElementById("page2").classList.remove("hidden");
 
   const logoMap = {
-    "Dysons": "tracker/logos/dysons.png",
-    "CDC Wyndham": "tracker/logos/cdc.png",
-    "CDC Oakleigh": "tracker/logos/cdc.png",
-    "Ventura": "tracker/logos/ventura.png",
-    "Kinetic": "tracker/logos/kinetic.png",
-    "Skybus": "tracker/logos/skybus.png",
+    "Dysons": "logos/dysons.png",
+    "CDC Wyndham": "logos/cdc.png",
+    "CDC Oakleigh": "logos/cdc.png",
+    "Ventura": "logos/ventura.png",
+    "Kinetic": "logos/kinetic.png",
+    "Skybus": "logos/skybus.png"
   };
-
-  document.getElementById("operatorLogo").innerHTML =
-    `<img src="${logoMap[operator] || ''}">`;
 
   const coord = [data.latitude, data.longitude];
 
@@ -255,11 +252,10 @@ async function loadBus(fleet, operator) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
     .addTo(map);
 
-  const busIcon = L.divIcon({
-    html: "🚌",
-    className: "",
-    iconSize: [70, 70],
-    iconAnchor: [35, 35]
+  const busIcon = L.icon({
+    iconUrl: logoMap[operator] || "logos/cdc.png",
+    iconSize: [80, 80],
+    iconAnchor: [40, 40]
   });
 
   marker = L.marker(coord, { icon: busIcon }).addTo(map);
