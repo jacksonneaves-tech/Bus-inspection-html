@@ -321,10 +321,33 @@ function reverseGeocode(coord) {
 }
 
 function goBack() {
+  // Hide map page
   document.getElementById("page2").classList.add("hidden");
+
+  // Show keypad page
   document.getElementById("page1").classList.remove("hidden");
+
+  // Reset fleet number
   fleetNumber = "";
   document.getElementById("fleetDisplay").innerText = "";
+
+  // Hide operator buttons
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("operatorSection").innerHTML = "";
+
+  // Hide operator back button
+  document.getElementById("operatorBackButton").classList.add("hidden");
+
+  // Show keypad + Find button again
+  document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
+
+  // Optional: clear map instance cleanly
+  if (map) {
+    map.remove();
+    map = null;
+    marker = null;
+  }
 }
 </script>
 
