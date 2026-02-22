@@ -31,7 +31,6 @@ body {
   border-bottom: 1px solid var(--border-soft);
   text-align: center;
   font-weight: 600;
-  letter-spacing: 1px;
 }
 
 .container { padding: 20px; }
@@ -49,42 +48,7 @@ body {
 
 h1 { text-align: center; }
 
-.logo-large {
-  text-align: center;
-  margin-bottom: 15px;
-}
-
-.logo-large img {
-  max-height: 60px;
-}
-
 .fleet-display {
-  text-align: center;
-  font-size: 28px;
-  font-weight: 600;
-  margin-bottom: 15px;
-}
-
-.bus-graphic {
-  text-align: center;
-  font-size: 100px;
-  margin-bottom: 10px;
-}
-
-#map {
-  height: 320px;
-  border-radius: 16px;
-  margin-bottom: 15px;
-}
-
-.location-info {
-  font-size: 14px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-/* Fleet display box */
-.fleet-input-display {
   text-align: center;
   font-size: 28px;
   letter-spacing: 4px;
@@ -117,6 +81,22 @@ h1 { text-align: center; }
   background: var(--accent-blue);
 }
 
+.find-btn {
+  margin-top: 15px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent-blue);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.find-btn:hover {
+  background: var(--accent-blue-hover);
+}
+
 .operator-buttons button {
   width: 100%;
   margin-top: 10px;
@@ -134,15 +114,20 @@ h1 { text-align: center; }
 
 .hidden { display: none; }
 
-.secondary {
-  margin-top: 20px;
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border-soft);
-  background: transparent;
-  color: var(--text-light);
-  cursor: pointer;
+#map {
+  height: 400px;
+  border-radius: 16px;
+  margin-bottom: 15px;
+}
+
+.location-info {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.logo-large img {
+  max-height: 70px;
 }
 </style>
 </head>
@@ -157,7 +142,7 @@ h1 { text-align: center; }
 <div id="page1">
   <h1>Enter Fleet Number</h1>
 
-  <div class="fleet-input-display" id="fleetDisplay"></div>
+  <div class="fleet-display" id="fleetDisplay"></div>
 
   <div class="keypad" id="keypad">
     <button onclick="addDigit(1)">1</button>
@@ -174,20 +159,17 @@ h1 { text-align: center; }
     <button onclick="backspace()">⌫</button>
   </div>
 
+  <button class="find-btn" onclick="findBus()">Find Bus</button>
+
   <div class="operator-buttons hidden" id="operatorSection"></div>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
-
-  <div class="logo-large" id="operatorLogo"></div>
-  <div class="fleet-display" id="fleetLabel"></div>
-  <div class="bus-graphic">🚌</div>
-
+  <div class="logo-large" id="operatorLogo" style="text-align:center;margin-bottom:10px;"></div>
   <div id="map"></div>
   <div id="locationInfo" class="location-info"></div>
-
-  <button class="secondary" onclick="goBack()">Find Another Bus</button>
+  <button class="find-btn" onclick="goBack()">Find Another Bus</button>
 </div>
 
 </div>
@@ -206,7 +188,6 @@ function addDigit(num) {
   if (fleetNumber.length >= 6) return;
   fleetNumber += num;
   document.getElementById("fleetDisplay").innerText = fleetNumber;
-  checkFleet();
 }
 
 function backspace() {
@@ -221,13 +202,13 @@ function clearFleet() {
   document.getElementById("keypad").classList.remove("hidden");
 }
 
-async function checkFleet() {
-  if (fleetNumber.length < 2) return;
+async function findBus() {
+  if (!fleetNumber) return alert("Enter fleet number.");
 
   const res = await fetch(`${BACKEND}/operators/${fleetNumber}`);
   const data = await res.json();
 
-  if (data.error) return;
+  if (data.error) return alert("Fleet not found.");
 
   if (data.operators.length === 1) {
     loadBus(fleetNumber, data.operators[0]);
@@ -254,20 +235,17 @@ async function loadBus(fleet, operator) {
   document.getElementById("page1").classList.add("hidden");
   document.getElementById("page2").classList.remove("hidden");
 
-  document.getElementById("fleetLabel").innerText = `Fleet ${fleet}`;
-
   const logoMap = {
-    "Dysons": "logos/dysons.png",
-    "CDC Wyndham": "logos/cdc.png",
-    "CDC Oakleigh": "logos/cdc.png",
-    "Ventura": "logos/ventura.png",
-    "Kinetic": "logos/kinetic.png",
-    "Skybus": "logos/skybus.png",
+    "Dysons": "tracker/logos/dysons.png",
+    "CDC Wyndham": "tracker/logos/cdc.png",
+    "CDC Oakleigh": "tracker/logos/cdc.png",
+    "Ventura": "tracker/logos/ventura.png",
+    "Kinetic": "tracker/logos/kinetic.png",
+    "Skybus": "tracker/logos/skybus.png",
   };
 
-  const logoSrc = logoMap[operator] || "";
   document.getElementById("operatorLogo").innerHTML =
-    logoSrc ? `<img src="${logoSrc}">` : operator;
+    `<img src="${logoMap[operator] || ''}">`;
 
   const coord = [data.latitude, data.longitude];
 
@@ -277,7 +255,14 @@ async function loadBus(fleet, operator) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
     .addTo(map);
 
-  marker = L.marker(coord).addTo(map);
+  const busIcon = L.divIcon({
+    html: "🚌",
+    className: "",
+    iconSize: [70, 70],
+    iconAnchor: [35, 35]
+  });
+
+  marker = L.marker(coord, { icon: busIcon }).addTo(map);
 
   reverseGeocode(coord);
 }
