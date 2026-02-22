@@ -81,7 +81,7 @@ h1 { text-align: center; }
   background: var(--accent-blue);
 }
 
-.find-btn {
+.find-btn, .back-btn {
   margin-top: 15px;
   width: 100%;
   padding: 14px;
@@ -93,7 +93,7 @@ h1 { text-align: center; }
   cursor: pointer;
 }
 
-.find-btn:hover {
+.find-btn:hover, .back-btn:hover {
   background: var(--accent-blue-hover);
 }
 
@@ -124,6 +124,15 @@ h1 { text-align: center; }
   font-size: 14px;
   color: var(--text-muted);
   text-align: center;
+}
+
+.operator-logo {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.operator-logo img {
+  max-height: 80px;
 }
 </style>
 </head>
@@ -158,13 +167,20 @@ h1 { text-align: center; }
   <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
 
   <div class="operator-buttons hidden" id="operatorSection"></div>
+  <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
+
+  <div class="operator-logo" id="operatorLogo"></div>
+
   <div id="map"></div>
+
   <div id="locationInfo" class="location-info"></div>
+
   <button class="find-btn" onclick="goBack()">Find Another Bus</button>
+
 </div>
 
 </div>
@@ -193,8 +209,11 @@ function backspace() {
 function clearFleet() {
   fleetNumber = "";
   document.getElementById("fleetDisplay").innerText = "";
-  document.getElementById("operatorSection").classList.add("hidden");
+}
 
+function returnToKeypad() {
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("operatorBackButton").classList.add("hidden");
   document.getElementById("keypad").classList.remove("hidden");
   document.getElementById("findButton").classList.remove("hidden");
 }
@@ -214,9 +233,9 @@ async function findBus() {
     container.innerHTML = "";
     container.classList.remove("hidden");
 
-    // Hide keypad + find button
     document.getElementById("keypad").classList.add("hidden");
     document.getElementById("findButton").classList.add("hidden");
+    document.getElementById("operatorBackButton").classList.remove("hidden");
 
     data.operators.forEach(op => {
       const btn = document.createElement("button");
@@ -244,6 +263,9 @@ async function loadBus(fleet, operator) {
     "Skybus": "logos/skybus.png"
   };
 
+  document.getElementById("operatorLogo").innerHTML =
+    `<img src="${logoMap[operator] || ''}">`;
+
   const coord = [data.latitude, data.longitude];
 
   if (map) map.remove();
@@ -252,8 +274,9 @@ async function loadBus(fleet, operator) {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
     .addTo(map);
 
-  const busIcon = L.icon({
-    iconUrl: logoMap[operator] || "logos/cdc.png",
+  const busIcon = L.divIcon({
+    html: "🚌",
+    className: "",
     iconSize: [80, 80],
     iconAnchor: [40, 40]
   });
@@ -277,7 +300,8 @@ function reverseGeocode(coord) {
 function goBack() {
   document.getElementById("page2").classList.add("hidden");
   document.getElementById("page1").classList.remove("hidden");
-  clearFleet();
+  fleetNumber = "";
+  document.getElementById("fleetDisplay").innerText = "";
 }
 </script>
 
