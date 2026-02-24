@@ -665,5 +665,126 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 
+
+
+<!-- ================= NSW / PTV MODE TOGGLE ADDITIONS ================= -->
+
+<!-- Add this button inside your keypad container (Page 1) -->
+<!--
+<button id="modeToggleBtn" class="secondary" onclick="toggleMode()">
+  Switch to Rego Input (NSW)
+</button>
+-->
+
+<script>
+
+/* ================= MODE SYSTEM ================= */
+
+let inputMode = "fleet"; // 'fleet' or 'rego'
+
+function toggleMode() {
+  const btn = document.getElementById("modeToggleBtn");
+
+  if (inputMode === "fleet") {
+    inputMode = "rego";
+    btn.innerText = "Switch to Fleet Input (VIC)";
+  } else {
+    inputMode = "fleet";
+    btn.innerText = "Switch to Rego Input (NSW)";
+  }
+
+  clearInput();
+}
+
+/* ================= MODIFY findBus() ================= */
+
+// Replace your existing findBus() with this version
+
+async function findBus() {
+  const rawInput = getEnteredValue(); // use your existing input getter
+  if (!rawInput) return;
+
+  if (inputMode === "fleet") {
+    findPTVBus(rawInput); // your existing VIC logic
+  } else {
+    findNSWBus(rawInput);
+  }
+}
+
+/* ================= NSW BUS LOOKUP ================= */
+
+async function findNSWBus(userInput) {
+  try {
+
+    // Make flexible rego pattern
+    // Accept formats like 1234MO, MO1234, 1234ST, ST1234 etc
+
+    const numericPart = userInput.match(/\d+/)?.[0] || "";
+    const letterPart = userInput.match(/[A-Za-z]+/)?.[0] || "";
+
+    const possibleRegos = [];
+
+    if (numericPart) {
+      possibleRegos.push(numericPart + letterPart);
+      possibleRegos.push(letterPart + numericPart);
+      possibleRegos.push(numericPart + "MO");
+      possibleRegos.push(numericPart + "ST");
+    }
+
+    // Call your backend proxy endpoint for NSW GTFS
+    const res = await fetch(`/api/nsw/vehiclepositions`);
+    const buffer = await res.arrayBuffer();
+
+    const feed = gtfsRealtimeBindings.transit_realtime.FeedMessage.decode(
+      new Uint8Array(buffer)
+    );
+
+    let match = null;
+
+    feed.entity.forEach(entity => {
+      if (!entity.vehicle) return;
+
+      const rego = entity.vehicle.vehicle?.licensePlate;
+
+      if (!rego) return;
+
+      if (possibleRegos.some(r => rego.toUpperCase().includes(r.toUpperCase()))) {
+        match = entity.vehicle;
+      }
+    });
+
+    if (!match) {
+      alert("NSW Bus not found.");
+      return;
+    }
+
+    displayNSWBus(match);
+
+  } catch (err) {
+    console.error("NSW lookup failed:", err);
+    alert("Error retrieving NSW data.");
+  }
+}
+
+/* ================= NSW DISPLAY ================= */
+
+function displayNSWBus(vehicle) {
+
+  const lat = vehicle.position.latitude;
+  const lon = vehicle.position.longitude;
+
+  // Reuse your existing map function
+  showBusOnMap(lat, lon, {
+    operatorLogo: "logos/nsw.png", // optional placeholder
+    rego: vehicle.vehicle.licensePlate
+  });
+
+}
+
+</script>
+
+<!-- ================= END NSW ADDITIONS ================= -->
+
+
 </body>
 </html>
