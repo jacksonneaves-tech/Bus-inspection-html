@@ -22,14 +22,14 @@
   --border-soft:rgba(255,255,255,0.08);
 }
 
-body {
+body{
   margin:0;
   font-family:"Segoe UI",Roboto,sans-serif;
   background:linear-gradient(145deg,#0f172a,#1e293b);
   color:var(--text-light);
 }
 
-.header {
+.header{
   padding:20px;
   background:#0b1220;
   border-bottom:1px solid var(--border-soft);
@@ -37,9 +37,9 @@ body {
   font-weight:600;
 }
 
-.container { padding:20px; }
+.container{padding:20px;}
 
-.card {
+.card{
   max-width:520px;
   margin:auto;
   background:var(--card-dark);
@@ -50,9 +50,9 @@ body {
   min-height:520px;
 }
 
-h1 { text-align:center; }
+h1{text-align:center;}
 
-.fleet-display {
+.fleet-display{
   text-align:center;
   font-size:28px;
   letter-spacing:4px;
@@ -63,13 +63,13 @@ h1 { text-align:center; }
   min-height:32px;
 }
 
-.keypad {
+.keypad{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:12px;
 }
 
-.keypad button {
+.keypad button{
   padding:18px;
   font-size:20px;
   border-radius:14px;
@@ -80,11 +80,9 @@ h1 { text-align:center; }
   border:1px solid var(--border-soft);
 }
 
-.keypad button:hover {
-  background:var(--accent-blue);
-}
+.keypad button:hover{background:var(--accent-blue);}
 
-.find-btn,.back-btn,.mode-btn {
+.find-btn,.back-btn,.mode-btn{
   margin-top:15px;
   width:100%;
   padding:14px;
@@ -96,11 +94,11 @@ h1 { text-align:center; }
   cursor:pointer;
 }
 
-.find-btn:hover,.back-btn:hover,.mode-btn:hover {
+.find-btn:hover,.back-btn:hover,.mode-btn:hover{
   background:var(--accent-blue-hover);
 }
 
-.operator-buttons button {
+.operator-buttons button{
   width:100%;
   margin-top:10px;
   padding:14px;
@@ -111,67 +109,45 @@ h1 { text-align:center; }
   cursor:pointer;
 }
 
-.operator-buttons button:hover {
-  background:var(--accent-blue);
-}
+.operator-buttons button:hover{background:var(--accent-blue);}
 
-.hidden { display:none; }
+.hidden{display:none;}
 
-#map {
+#map{
   height:420px;
   border-radius:16px;
   margin-bottom:15px;
 }
 
-.operator-logo {
-  text-align:center;
-  margin-bottom:15px;
-}
+.operator-logo{text-align:center;margin-bottom:15px;}
+.operator-logo img{max-height:80px;}
 
-.operator-logo img {
-  max-height:80px;
-}
-
-/* Animated Bus */
-.bus-marker {
+.bus-marker{
   font-size:42px;
   animation:floatBus 2s ease-in-out infinite;
   text-align:center;
-  filter:drop-shadow(0 6px 10px rgba(0,0,0,0.5));
 }
 
-@keyframes floatBus {
-  0% { transform:translateY(0px); }
-  50% { transform:translateY(-5px); }
-  100% { transform:translateY(0px); }
+@keyframes floatBus{
+  0%{transform:translateY(0);}
+  50%{transform:translateY(-5px);}
+  100%{transform:translateY(0);}
 }
 
-/* Directions badge */
-.nav-badge {
-  background:rgba(15,23,42,0.85);
+.nav-badge{
+  background:rgba(15,23,42,0.9);
   border:1px solid var(--border-soft);
   color:var(--text-light);
-  padding:10px 12px;
+  padding:8px 12px;
   border-radius:12px;
   font-size:14px;
-  backdrop-filter:blur(6px);
   display:flex;
   align-items:center;
   gap:8px;
-  box-shadow:0 10px 20px rgba(0,0,0,0.35);
 }
 
-.nav-badge.hidden { display:none; }
-
-.nav-badge .arrow {
-  display:inline-block;
-  transition:transform 0.2s ease;
-}
-
-.path-line {
-  color:#60a5fa;
-  opacity:0.9;
-}
+.nav-badge.hidden{display:none;}
+.nav-badge .arrow{transition:transform 0.2s ease;}
 </style>
 </head>
 
@@ -205,6 +181,7 @@ h1 { text-align:center; }
 
 <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
 
+<!-- NSW Toggle BELOW Find Bus -->
 <button class="mode-btn" id="modeToggleBtn" onclick="toggleMode()">
 Switch to Rego Input (NSW)
 </button>
@@ -217,6 +194,7 @@ Switch to Rego Input (NSW)
 <div id="page2" class="hidden">
 <div class="operator-logo" id="operatorLogo"></div>
 <div id="map"></div>
+
 <button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
 <button class="find-btn" onclick="goBack()">Find Another Bus</button>
 </div>
@@ -231,14 +209,14 @@ const BACKEND="https://ptv-gtfs-bus-backend.onrender.com";
 
 let fleetNumber="";
 let inputMode="fleet";
-let map,marker,userMarker,userAccuracy,pathLine,userLatLng,busLatLng;
-let watchId=null,directionsEnabled=false,navBadgeControl=null;
+let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false;
 
-/* MODE */
+/* ===== MODE TOGGLE ===== */
 function toggleMode(){
+  clearFleet();
   const btn=document.getElementById("modeToggleBtn");
   const title=document.getElementById("pageTitle");
-  clearFleet();
+
   if(inputMode==="fleet"){
     inputMode="rego";
     btn.innerText="Switch to Fleet Input (VIC)";
@@ -250,12 +228,22 @@ function toggleMode(){
   }
 }
 
-/* KEYPAD */
-function addDigit(n){ if(fleetNumber.length>=8)return; fleetNumber+=n; document.getElementById("fleetDisplay").innerText=fleetNumber;}
-function backspace(){ fleetNumber=fleetNumber.slice(0,-1); document.getElementById("fleetDisplay").innerText=fleetNumber;}
-function clearFleet(){ fleetNumber=""; document.getElementById("fleetDisplay").innerText="";}
+/* ===== KEYPAD ===== */
+function addDigit(n){
+  if(fleetNumber.length>=8)return;
+  fleetNumber+=n;
+  document.getElementById("fleetDisplay").innerText=fleetNumber;
+}
+function backspace(){
+  fleetNumber=fleetNumber.slice(0,-1);
+  document.getElementById("fleetDisplay").innerText=fleetNumber;
+}
+function clearFleet(){
+  fleetNumber="";
+  document.getElementById("fleetDisplay").innerText="";
+}
 
-/* FIND */
+/* ===== FIND BUS ===== */
 async function findBus(){
   if(!fleetNumber)return alert("Enter number.");
 
@@ -277,10 +265,12 @@ async function findBus(){
     const container=document.getElementById("operatorSection");
     container.innerHTML="";
     container.classList.remove("hidden");
+
     document.getElementById("keypad").classList.add("hidden");
     document.getElementById("findButton").classList.add("hidden");
     document.getElementById("modeToggleBtn").classList.add("hidden");
     document.getElementById("operatorBackButton").classList.remove("hidden");
+
     data.operators.forEach(op=>{
       const btn=document.createElement("button");
       btn.innerText=op;
@@ -290,7 +280,6 @@ async function findBus(){
   }
 }
 
-/* LOAD VIC */
 async function loadBus(fleet,operator){
   const res=await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
   const data=await res.json();
@@ -298,46 +287,55 @@ async function loadBus(fleet,operator){
   showBusOnMap(data.latitude,data.longitude);
 }
 
-/* MAP */
+/* ===== MAP ===== */
 function showBusOnMap(lat,lng){
   document.getElementById("page1").classList.add("hidden");
   document.getElementById("page2").classList.remove("hidden");
 
   if(map)map.remove();
   map=L.map("map").setView([lat,lng],16);
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-  const icon=L.divIcon({html:`<div class="bus-marker">🚌</div>`,className:"",iconSize:[60,60],iconAnchor:[30,30]});
+  const icon=L.divIcon({
+    html:`<div class="bus-marker">🚌</div>`,
+    className:"",
+    iconSize:[60,60],
+    iconAnchor:[30,30]
+  });
+
   marker=L.marker([lat,lng],{icon}).addTo(map);
   busLatLng=L.latLng(lat,lng);
 }
 
-/* DIRECTIONS */
+/* ===== DIRECTIONS ===== */
 function toggleDirections(){
   directionsEnabled=!directionsEnabled;
-  document.getElementById("directionsBtn").innerText=directionsEnabled?"Hide Directions":"Directions to Bus";
-  if(directionsEnabled)startLocation(); else stopLocation();
-}
+  document.getElementById("directionsBtn").innerText=
+    directionsEnabled?"Hide Directions":"Directions to Bus";
 
-function startLocation(){
-  if(!navigator.geolocation)return alert("Geolocation not supported");
+  if(!directionsEnabled){
+    if(watchId)navigator.geolocation.clearWatch(watchId);
+    if(pathLine)map.removeLayer(pathLine);
+    if(userMarker)map.removeLayer(userMarker);
+    return;
+  }
+
   watchId=navigator.geolocation.watchPosition(pos=>{
     userLatLng=L.latLng(pos.coords.latitude,pos.coords.longitude);
-    if(!userMarker)userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981",fillColor:"#10b981",fillOpacity:1}).addTo(map);
-    else userMarker.setLatLng(userLatLng);
-    if(!pathLine)pathLine=L.polyline([userLatLng,busLatLng],{className:"path-line",weight:3}).addTo(map);
-    else pathLine.setLatLngs([userLatLng,busLatLng]);
-  });
+
+    if(!userMarker){
+      userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981"}).addTo(map);
+    }else userMarker.setLatLng(userLatLng);
+
+    if(!pathLine){
+      pathLine=L.polyline([userLatLng,busLatLng],{color:"#60a5fa"}).addTo(map);
+    }else pathLine.setLatLngs([userLatLng,busLatLng]);
+
+  },()=>alert("Location permission denied"),{enableHighAccuracy:true});
 }
 
-function stopLocation(){
-  if(watchId){navigator.geolocation.clearWatch(watchId);watchId=null;}
-  if(userMarker)map.removeLayer(userMarker);
-  if(pathLine)map.removeLayer(pathLine);
-  userMarker=null;pathLine=null;
-}
-
-/* NAV */
+/* ===== NAVIGATION ===== */
 function returnToKeypad(){
   document.getElementById("operatorSection").classList.add("hidden");
   document.getElementById("operatorBackButton").classList.add("hidden");
@@ -349,13 +347,18 @@ function returnToKeypad(){
 function goBack(){
   document.getElementById("page2").classList.add("hidden");
   document.getElementById("page1").classList.remove("hidden");
-  clearFleet();
+
+  fleetNumber="";
+  document.getElementById("fleetDisplay").innerText="";
+
   document.getElementById("operatorSection").innerHTML="";
   document.getElementById("operatorSection").classList.add("hidden");
   document.getElementById("operatorBackButton").classList.add("hidden");
+
   document.getElementById("keypad").classList.remove("hidden");
   document.getElementById("findButton").classList.remove("hidden");
   document.getElementById("modeToggleBtn").classList.remove("hidden");
+
   if(map){map.remove();map=null;}
 }
 </script>
