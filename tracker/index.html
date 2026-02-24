@@ -211,6 +211,10 @@ h1 { text-align: center; }
       <h1>Enter Fleet Number</h1>
 
       <div class="fleet-display" id="fleetDisplay"></div>
+      
+      <button id="modeToggleBtn" class="secondary" onclick="toggleMode()" style="margin-bottom:15px;">
+  Switch to Rego Input (NSW)
+</button>
 
       <div class="keypad" id="keypad">
         <button onclick="addDigit(1)">1</button>
@@ -312,36 +316,36 @@ function returnToKeypad() {
 }
 
 async function findBus() {
-  if (!fleetNumber) return alert("Enter fleet number.");
 
-  try {
-    const res = await fetch(`${BACKEND}/operators/${fleetNumber}`);
-    const data = await res.json();
+  const value = getFleetInputValue(); // your existing function
 
-    if (data.error) return alert("Fleet not found.");
-
-    if (data.operators.length === 1) {
-      loadBus(fleetNumber, data.operators[0]);
-    } else {
-      const container = document.getElementById("operatorSection");
-      container.innerHTML = "";
-      container.classList.remove("hidden");
-
-      document.getElementById("keypad").classList.add("hidden");
-      document.getElementById("findButton").classList.add("hidden");
-      document.getElementById("operatorBackButton").classList.remove("hidden");
-
-      data.operators.forEach(op => {
-        const btn = document.createElement("button");
-        btn.innerText = op;
-        btn.onclick = () => loadBus(fleetNumber, op);
-        container.appendChild(btn);
-      });
-    }
-  } catch (e) {
-    alert("Could not reach server.");
-    console.error(e);
+  if (!value) {
+    alert("Please enter a number.");
+    return;
   }
+
+  // If NSW rego mode
+  if (inputMode === "rego") {
+    fetch(`/nsw/${value}`)
+      .then(res => res.json())
+      .then(data => {
+
+        if (data.error) {
+          alert("NSW bus not found.");
+          return;
+        }
+
+        showBusOnMap(data.latitude, data.longitude);
+        showPage2();
+
+      })
+      .catch(() => alert("NSW lookup failed."));
+
+    return;
+  }
+
+  // Otherwise normal VIC fleet logic
+  findPTVBus(value); // your existing VIC logic
 }
 
 async function loadBus(fleet, operator) {
