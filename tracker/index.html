@@ -265,18 +265,44 @@ async function findBus(){
   if(!fleetNumber)return alert("Enter number.");
 
   if(inputMode==="rego"){
-    const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
-    const data=await res.json();
-    if(data.error)return alert("NSW bus not found.");
+  const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  if(data.single){
     showBusOnMap(
-  data.latitude,
-  data.longitude,
-  "nsw",
-  data.status,
-  data.timestamp
-);
+      data.latitude,
+      data.longitude,
+      "nsw",
+      data.status,
+      data.timestamp
+    );
     return;
   }
+
+  if(data.multiple){
+    const container=document.getElementById("operatorSection");
+    container.innerHTML="";
+    container.classList.remove("hidden");
+
+    document.getElementById("keypad").classList.add("hidden");
+    document.getElementById("findButton").classList.add("hidden");
+    document.getElementById("modeToggleBtn").classList.add("hidden");
+    document.getElementById("operatorBackButton").classList.remove("hidden");
+
+    data.options.forEach(rego=>{
+      const btn=document.createElement("button");
+      btn.innerText=rego;
+      btn.onclick=()=>loadNswExact(rego);
+      container.appendChild(btn);
+    });
+  }
+
+  return;
+}
 
   const res=await fetch(`${BACKEND}/operators/${fleetNumber}`);
   const data=await res.json();
@@ -314,6 +340,22 @@ async function loadBus(fleet,operator){
   data.status,
   data.timestamp
 );
+}
+  async function loadNswExact(rego){
+  const res=await fetch(`${BACKEND}/nsw-exact/${rego}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  showBusOnMap(
+    data.latitude,
+    data.longitude,
+    "nsw",
+    data.status,
+    data.timestamp
+  );
 }
 
 /* ===== MAP ===== */
