@@ -268,7 +268,13 @@ async function findBus(){
     const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
     const data=await res.json();
     if(data.error)return alert("NSW bus not found.");
-    showBusOnMap(data.latitude,data.longitude,"nsw");
+    showBusOnMap(
+  data.latitude,
+  data.longitude,
+  "nsw",
+  data.status,
+  data.timestamp
+);
     return;
   }
 
