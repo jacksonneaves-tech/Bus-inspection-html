@@ -394,6 +394,9 @@ if(ENABLE_LANDSCAPE_TABLET_LAYOUT){
   document.body.classList.add("landscape-trial-enabled");
 }
 let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false,currentOperator="";
+let deviceHeading=null;
+let motionHeading=null;
+let compassListener=null;
 
 /* ===== MODE TOGGLE ===== */
 function toggleMode(){
@@ -605,6 +608,7 @@ function resetDirectionsState(){
   pathLine=null;
   userMarker=null;
   userLatLng=null;
+  stopCompass();
 }
 
 function getDirectionLabel(from,to){
@@ -613,6 +617,64 @@ function getDirectionLabel(from,to){
   const ns=latDiff>=0?"N":"S";
   const ew=lngDiff>=0?"E":"W";
   return `${ns}/${ew}`;
+}
+
+function normalizeHeading(deg){
+  return ((deg%360)+360)%360;
+}
+
+function getBearing(from,to){
+  const fromLat=from.lat*Math.PI/180;
+  const toLat=to.lat*Math.PI/180;
+  const dLng=(to.lng-from.lng)*Math.PI/180;
+  const y=Math.sin(dLng)*Math.cos(toLat);
+  const x=Math.cos(fromLat)*Math.sin(toLat)-Math.sin(fromLat)*Math.cos(toLat)*Math.cos(dLng);
+  return normalizeHeading(Math.atan2(y,x)*180/Math.PI);
+}
+
+function resolveDeviceHeading(event){
+  if(typeof event.webkitCompassHeading==="number"){
+    return normalizeHeading(event.webkitCompassHeading);
+  }
+
+  if(typeof event.alpha==="number"){
+    return normalizeHeading(360-event.alpha);
+  }
+
+  return null;
+}
+
+async function startCompass(){
+  if(compassListener)return;
+
+  if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+    try{
+      const permission=await DeviceOrientationEvent.requestPermission();
+      if(permission!=="granted")return;
+    }catch(_err){
+      return;
+    }
+  }
+
+  compassListener=(event)=>{
+    const heading=resolveDeviceHeading(event);
+    if(heading!==null){
+      deviceHeading=heading;
+      updateNavOverlay();
+    }
+  };
+
+  window.addEventListener("deviceorientationabsolute",compassListener,true);
+  window.addEventListener("deviceorientation",compassListener,true);
+}
+
+function stopCompass(){
+  if(!compassListener)return;
+  window.removeEventListener("deviceorientationabsolute",compassListener,true);
+  window.removeEventListener("deviceorientation",compassListener,true);
+  compassListener=null;
+  deviceHeading=null;
+  motionHeading=null;
 }
 
 function formatDistanceLabel(distanceMeters){
@@ -646,11 +708,11 @@ function updateNavOverlay(){
   const direction=getDirectionLabel(userLatLng,busLatLng);
   document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
 
-  const angle=map.latLngToLayerPoint(busLatLng).subtract(map.latLngToLayerPoint(userLatLng));
-  const deg=(Math.atan2(angle.y,angle.x)*180/Math.PI)+90;
+  const bearingToBus=getBearing(userLatLng,busLatLng);
+  const heading=deviceHeading??motionHeading;
+  const deg=heading===null?bearingToBus:normalizeHeading(bearingToBus-heading);
   document.getElementById("navArrow").style.transform=`rotate(${deg}deg)`;
 }
-
 
 
 function toggleDirections(){
@@ -664,9 +726,13 @@ function toggleDirections(){
   }
 
   document.getElementById("navOverlay").classList.remove("hidden");
+  startCompass();
 
   watchId=navigator.geolocation.watchPosition(pos=>{
     userLatLng=L.latLng(pos.coords.latitude,pos.coords.longitude);
+    motionHeading=typeof pos.coords.heading==="number"&&!Number.isNaN(pos.coords.heading)
+      ?normalizeHeading(pos.coords.heading)
+      :null;
 
     if(!userMarker){
       userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981"}).addTo(map);
