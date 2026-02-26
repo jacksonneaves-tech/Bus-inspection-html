@@ -135,7 +135,7 @@ h1{text-align:center;}
 .mode-slider{
   width:58px;
   height:30px;
-  background:#0b1220;
+  background:#f97316;
   border:1px solid var(--border-soft);
   border-radius:999px;
   position:relative;
@@ -615,12 +615,36 @@ function getDirectionLabel(from,to){
   return `${ns}/${ew}`;
 }
 
+function formatDistanceLabel(distanceMeters){
+  if(distanceMeters<=999){
+    return `${distanceMeters}m`;
+  }
+
+  return `${(distanceMeters/1000).toFixed(1)}km`;
+}
+
+function formatLastSeenLabel(timestamp){
+  const mins=Math.max(0,Math.floor((Date.now()-timestamp)/60000));
+
+  if(mins<60){
+    return `${mins} min${mins!==1?"s":""} ago`;
+  }
+
+  const hours=Math.floor(mins/60);
+  if(hours<24){
+    return `${hours} hour${hours!==1?"s":""} ago`;
+  }
+
+  const days=Math.floor(hours/24);
+  return `${days} day${days!==1?"s":""} ago`;
+}
+
 function updateNavOverlay(){
   if(!userLatLng||!busLatLng||!map)return;
 
   const distance=Math.round(userLatLng.distanceTo(busLatLng));
-  const direction=getDirectionLabel(userLatLng,busLatLng);
-  document.getElementById("navText").innerText=`${distance}m ${direction}`;
+  const direction=getDirectionLabel(userLatLng,busLatLng).toLowerCase();
+  document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
 
   const angle=map.latLngToLayerPoint(busLatLng).subtract(map.latLngToLayerPoint(userLatLng));
   const deg=(Math.atan2(angle.y,angle.x)*180/Math.PI)+90;
@@ -701,9 +725,7 @@ function goBack(){
     statusEl.style.background = "rgba(16,185,129,0.15)";
     statusEl.style.color = "#10b981";
   } else {
-    const mins = Math.floor((Date.now() - timestamp) / 60000);
-
-    statusEl.innerText = `● OFFLINE — Last seen ${mins} min${mins!==1?"s":""} ago`;
+    statusEl.innerText = `● OFFLINE — Last seen ${formatLastSeenLabel(timestamp)}`;
     statusEl.style.background = "rgba(234,179,8,0.15)";
     statusEl.style.color = "#eab308";
   }
