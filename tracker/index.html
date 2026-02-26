@@ -50,6 +50,21 @@ body{
   min-height:520px;
 }
 
+.mode-logo-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:92px;
+  margin-bottom:8px;
+}
+
+.mode-logo-wrap img{
+  max-height:80px;
+  max-width:220px;
+  width:auto;
+  object-fit:contain;
+}
+
 h1{text-align:center;}
 
 .fleet-display{
@@ -82,7 +97,7 @@ h1{text-align:center;}
 
 .keypad button:hover{background:var(--accent-blue);}
 
-.find-btn,.back-btn,.mode-btn{
+.find-btn,.back-btn{
   margin-top:15px;
   width:100%;
   padding:14px;
@@ -94,8 +109,63 @@ h1{text-align:center;}
   cursor:pointer;
 }
 
-.find-btn:hover,.back-btn:hover,.mode-btn:hover{
+.find-btn:hover,.back-btn:hover{
   background:var(--accent-blue-hover);
+}
+
+.mode-switch-wrap{
+  margin-top:15px;
+  margin-bottom:18px;
+  display:flex;
+  justify-content:center;
+}
+
+.mode-switch{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  user-select:none;
+  font-size:14px;
+  color:var(--text-muted);
+}
+
+.mode-switch input{display:none;}
+
+.mode-slider{
+  width:58px;
+  height:30px;
+  background:#f97316;
+  border:1px solid var(--border-soft);
+  border-radius:999px;
+  position:relative;
+  transition:all 0.2s ease;
+  cursor:pointer;
+}
+
+.mode-slider::before{
+  content:"";
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#f8fafc;
+  transition:transform 0.2s ease;
+}
+
+.mode-switch input:checked + .mode-slider{
+  background:var(--accent-blue);
+}
+
+.mode-switch input:checked + .mode-slider::before{
+  transform:translateX(28px);
+}
+
+.mode-switch .active{
+  color:var(--text-light);
+  font-weight:600;
 }
 
 .operator-buttons button{
@@ -154,6 +224,79 @@ h1{text-align:center;}
 
 .nav-badge.hidden{display:none;}
 .nav-badge .arrow{transition:transform 0.2s ease;}
+
+
+/* Trial layout for tablet landscape. Set ENABLE_LANDSCAPE_TABLET_LAYOUT=false in script to revert. */
+body.landscape-trial-enabled .page1-layout,
+body.landscape-trial-enabled .page2-layout{
+  display:block;
+}
+
+body.landscape-trial-enabled .page1-primary,
+body.landscape-trial-enabled .page1-secondary,
+body.landscape-trial-enabled .page2-info,
+body.landscape-trial-enabled .page2-map-wrap{
+  min-width:0;
+}
+
+body.landscape-trial-enabled .page2-map-wrap{
+  position:relative;
+}
+
+@media (orientation: portrait){
+  #page2 .page2-layout{
+    display:flex;
+    flex-direction:column;
+  }
+
+  #page2 .page2-map-wrap{
+    order:-1;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 900px){
+  body.landscape-trial-enabled .card{
+    max-width:980px;
+    min-height:auto;
+  }
+
+  body.landscape-trial-enabled .page1-layout,
+  body.landscape-trial-enabled .page2-layout{
+    display:grid;
+    grid-template-columns:minmax(280px,1fr) minmax(380px,1.2fr);
+    gap:22px;
+    align-items:start;
+  }
+
+  body.landscape-trial-enabled .page1-primary,
+  body.landscape-trial-enabled .page2-info{
+    position:sticky;
+    top:0;
+  }
+
+  body.landscape-trial-enabled .mode-logo-wrap{
+    min-height:110px;
+  }
+
+  body.landscape-trial-enabled .mode-switch-wrap{
+    margin-bottom:0;
+  }
+
+  body.landscape-trial-enabled #map{
+    height:520px;
+    margin-bottom:0;
+  }
+
+  body.landscape-trial-enabled #page2 .find-btn{
+    margin-top:12px;
+  }
+
+  body.landscape-trial-enabled #navOverlay{
+    top:12px;
+    right:12px;
+  }
+}
+
 </style>
 </head>
 
@@ -166,44 +309,73 @@ h1{text-align:center;}
 
 <!-- PAGE 1 -->
 <div id="page1">
-<h1 id="pageTitle">Enter Fleet Number</h1>
+<div class="page1-layout">
+  <div class="page1-primary">
+    <div class="mode-logo-wrap" id="modeLogoWrap">
+      <img id="modeLogo" src="logos/vic.png" alt="Victoria logo">
+    </div>
+    <h1 id="pageTitle">Enter Fleet Number</h1>
 
-<div class="fleet-display" id="fleetDisplay"></div>
+    <div class="fleet-display" id="fleetDisplay"></div>
 
-<div class="keypad" id="keypad">
-<button onclick="addDigit(1)">1</button>
-<button onclick="addDigit(2)">2</button>
-<button onclick="addDigit(3)">3</button>
-<button onclick="addDigit(4)">4</button>
-<button onclick="addDigit(5)">5</button>
-<button onclick="addDigit(6)">6</button>
-<button onclick="addDigit(7)">7</button>
-<button onclick="addDigit(8)">8</button>
-<button onclick="addDigit(9)">9</button>
-<button onclick="clearFleet()">C</button>
-<button onclick="addDigit(0)">0</button>
-<button onclick="backspace()">⌫</button>
+    <div class="mode-switch-wrap" id="modeToggleWrap">
+      <label class="mode-switch" id="modeSwitchLabel">
+        <span id="vicLabel" class="active">VIC</span>
+        <input type="checkbox" id="modeToggle" onchange="handleModeSwitch(this.checked)">
+        <span class="mode-slider"></span>
+        <span id="nswLabel">NSW</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="page1-secondary">
+    <div class="keypad" id="keypad">
+    <button onclick="addDigit(1)">1</button>
+    <button onclick="addDigit(2)">2</button>
+    <button onclick="addDigit(3)">3</button>
+    <button onclick="addDigit(4)">4</button>
+    <button onclick="addDigit(5)">5</button>
+    <button onclick="addDigit(6)">6</button>
+    <button onclick="addDigit(7)">7</button>
+    <button onclick="addDigit(8)">8</button>
+    <button onclick="addDigit(9)">9</button>
+    <button onclick="clearFleet()">C</button>
+    <button onclick="addDigit(0)">0</button>
+    <button onclick="backspace()">⌫</button>
+    </div>
+
+    <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
+
+    <div class="operator-buttons hidden" id="operatorSection"></div>
+    <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
+  </div>
 </div>
-
-<button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
-
-<!-- NSW Toggle BELOW Find Bus -->
-<button class="mode-btn" id="modeToggleBtn" onclick="toggleMode()">
-Switch to Rego Input (NSW)
-</button>
-
-<div class="operator-buttons hidden" id="operatorSection"></div>
-<button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
-<div class="operator-logo" id="operatorLogo"></div>
-<div id="map"></div>
-<div id="navOverlay" class="nav-badge hidden"><span class="arrow" id="navArrow">➤</span><span id="navText">--</span></div>
+<div class="page2-layout">
+  <div class="page2-info">
+    <div class="operator-logo" id="operatorLogo"></div>
 
-<button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
-<button class="find-btn" onclick="goBack()">Find Another Bus</button>
+    <div id="busStatus" style="
+      margin-bottom:15px;
+      padding:10px;
+      border-radius:12px;
+      text-align:center;
+      font-weight:600;
+      border:1px solid var(--border-soft);
+    "></div>
+
+    <button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
+    <button class="find-btn" onclick="goBack()">Find Another Bus</button>
+  </div>
+
+  <div class="page2-map-wrap">
+    <div id="map"></div>
+    <div id="navOverlay" class="nav-badge hidden"><span class="arrow" id="navArrow">➤</span><span id="navText">--</span></div>
+  </div>
+</div>
 </div>
 
 </div>
@@ -213,26 +385,50 @@ Switch to Rego Input (NSW)
 
 <script>
 const BACKEND="https://ptv-gtfs-bus-backend.onrender.com";
+const ENABLE_LANDSCAPE_TABLET_LAYOUT=true; // Set to false to revert this trial split view.
 
 let fleetNumber="";
 let inputMode="fleet";
+
+if(ENABLE_LANDSCAPE_TABLET_LAYOUT){
+  document.body.classList.add("landscape-trial-enabled");
+}
 let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false,currentOperator="";
+let deviceHeading=null;
+let motionHeading=null;
+let compassListener=null;
 
 /* ===== MODE TOGGLE ===== */
 function toggleMode(){
   clearFleet();
-  const btn=document.getElementById("modeToggleBtn");
   const title=document.getElementById("pageTitle");
+  const modeToggle=document.getElementById("modeToggle");
+  const modeLogo=document.getElementById("modeLogo");
+  const vicLabel=document.getElementById("vicLabel");
+  const nswLabel=document.getElementById("nswLabel");
 
   if(inputMode==="fleet"){
     inputMode="rego";
-    btn.innerText="Switch to Fleet Input (VIC)";
+    modeToggle.checked=true;
+    modeLogo.src="logos/nsw.png";
+    modeLogo.alt="NSW logo";
+    vicLabel.classList.remove("active");
+    nswLabel.classList.add("active");
     title.innerText="Enter NSW Rego";
   }else{
     inputMode="fleet";
-    btn.innerText="Switch to Rego Input (NSW)";
+    modeToggle.checked=false;
+    modeLogo.src="logos/vic.png";
+    modeLogo.alt="Victoria logo";
+    nswLabel.classList.remove("active");
+    vicLabel.classList.add("active");
     title.innerText="Enter Fleet Number";
   }
+}
+
+function handleModeSwitch(isNsw){
+  if((isNsw&&inputMode==="rego")||(!isNsw&&inputMode==="fleet"))return;
+  toggleMode();
 }
 
 /* ===== KEYPAD ===== */
@@ -255,12 +451,44 @@ async function findBus(){
   if(!fleetNumber)return alert("Enter number.");
 
   if(inputMode==="rego"){
-    const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
-    const data=await res.json();
-    if(data.error)return alert("NSW bus not found.");
-    showBusOnMap(data.latitude,data.longitude,"nsw");
+  const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  if(data.single){
+    showBusOnMap(
+      data.latitude,
+      data.longitude,
+      "nsw",
+      data.status,
+      data.timestamp
+    );
     return;
   }
+
+  if(data.multiple){
+    const container=document.getElementById("operatorSection");
+    container.innerHTML="";
+    container.classList.remove("hidden");
+
+    document.getElementById("keypad").classList.add("hidden");
+    document.getElementById("findButton").classList.add("hidden");
+    document.getElementById("modeToggleWrap").classList.add("hidden");
+    document.getElementById("operatorBackButton").classList.remove("hidden");
+
+    data.options.forEach(rego=>{
+      const btn=document.createElement("button");
+      btn.innerText=rego;
+      btn.onclick=()=>loadNswExact(rego);
+      container.appendChild(btn);
+    });
+  }
+
+  return;
+}
 
   const res=await fetch(`${BACKEND}/operators/${fleetNumber}`);
   const data=await res.json();
@@ -275,7 +503,7 @@ async function findBus(){
 
     document.getElementById("keypad").classList.add("hidden");
     document.getElementById("findButton").classList.add("hidden");
-    document.getElementById("modeToggleBtn").classList.add("hidden");
+    document.getElementById("modeToggleWrap").classList.add("hidden");
     document.getElementById("operatorBackButton").classList.remove("hidden");
 
     data.operators.forEach(op=>{
@@ -291,11 +519,33 @@ async function loadBus(fleet,operator){
   const res=await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
   const data=await res.json();
   if(data.error)return alert("Bus not active.");
-  showBusOnMap(data.latitude,data.longitude,operator);
+  showBusOnMap(
+  data.latitude,
+  data.longitude,
+  operator,
+  data.status,
+  data.timestamp
+);
+}
+  async function loadNswExact(rego){
+  const res=await fetch(`${BACKEND}/nsw-exact/${rego}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  showBusOnMap(
+    data.latitude,
+    data.longitude,
+    "nsw",
+    data.status,
+    data.timestamp
+  );
 }
 
 /* ===== MAP ===== */
-function showBusOnMap(lat,lng,operator){
+function showBusOnMap(lat,lng,operator,status,timestamp){
   document.getElementById("page1").classList.add("hidden");
   document.getElementById("page2").classList.remove("hidden");
 
@@ -317,6 +567,7 @@ function showBusOnMap(lat,lng,operator){
 
   marker=L.marker([lat,lng],{icon}).addTo(map);
   busLatLng=L.latLng(lat,lng);
+  updateBusStatus(status, timestamp);
 }
 
 /* ===== DIRECTIONS ===== */
@@ -357,6 +608,7 @@ function resetDirectionsState(){
   pathLine=null;
   userMarker=null;
   userLatLng=null;
+  stopCompass();
 }
 
 function getDirectionLabel(from,to){
@@ -367,15 +619,98 @@ function getDirectionLabel(from,to){
   return `${ns}/${ew}`;
 }
 
+function normalizeHeading(deg){
+  return ((deg%360)+360)%360;
+}
+
+function getBearing(from,to){
+  const fromLat=from.lat*Math.PI/180;
+  const toLat=to.lat*Math.PI/180;
+  const dLng=(to.lng-from.lng)*Math.PI/180;
+  const y=Math.sin(dLng)*Math.cos(toLat);
+  const x=Math.cos(fromLat)*Math.sin(toLat)-Math.sin(fromLat)*Math.cos(toLat)*Math.cos(dLng);
+  return normalizeHeading(Math.atan2(y,x)*180/Math.PI);
+}
+
+function resolveDeviceHeading(event){
+  if(typeof event.webkitCompassHeading==="number"){
+    return normalizeHeading(event.webkitCompassHeading);
+  }
+
+  if(typeof event.alpha==="number"){
+    return normalizeHeading(360-event.alpha);
+  }
+
+  return null;
+}
+
+async function startCompass(){
+  if(compassListener)return;
+
+  if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+    try{
+      const permission=await DeviceOrientationEvent.requestPermission();
+      if(permission!=="granted")return;
+    }catch(_err){
+      return;
+    }
+  }
+
+  compassListener=(event)=>{
+    const heading=resolveDeviceHeading(event);
+    if(heading!==null){
+      deviceHeading=heading;
+      updateNavOverlay();
+    }
+  };
+
+  window.addEventListener("deviceorientationabsolute",compassListener,true);
+  window.addEventListener("deviceorientation",compassListener,true);
+}
+
+function stopCompass(){
+  if(!compassListener)return;
+  window.removeEventListener("deviceorientationabsolute",compassListener,true);
+  window.removeEventListener("deviceorientation",compassListener,true);
+  compassListener=null;
+  deviceHeading=null;
+  motionHeading=null;
+}
+
+function formatDistanceLabel(distanceMeters){
+  if(distanceMeters<=999){
+    return `${distanceMeters}m`;
+  }
+
+  return `${(distanceMeters/1000).toFixed(1)}km`;
+}
+
+function formatLastSeenLabel(timestamp){
+  const mins=Math.max(0,Math.floor((Date.now()-timestamp)/60000));
+
+  if(mins<60){
+    return `${mins} min${mins!==1?"s":""} ago`;
+  }
+
+  const hours=Math.floor(mins/60);
+  if(hours<24){
+    return `${hours} hour${hours!==1?"s":""} ago`;
+  }
+
+  const days=Math.floor(hours/24);
+  return `${days} day${days!==1?"s":""} ago`;
+}
+
 function updateNavOverlay(){
   if(!userLatLng||!busLatLng||!map)return;
 
   const distance=Math.round(userLatLng.distanceTo(busLatLng));
   const direction=getDirectionLabel(userLatLng,busLatLng);
-  document.getElementById("navText").innerText=`${distance}m ${direction}`;
+  document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
 
-  const angle=map.latLngToLayerPoint(busLatLng).subtract(map.latLngToLayerPoint(userLatLng));
-  const deg=(Math.atan2(angle.y,angle.x)*180/Math.PI)+90;
+  const bearingToBus=getBearing(userLatLng,busLatLng);
+  const heading=deviceHeading??motionHeading;
+  const deg=heading===null?bearingToBus:normalizeHeading(bearingToBus-heading);
   document.getElementById("navArrow").style.transform=`rotate(${deg}deg)`;
 }
 
@@ -391,9 +726,13 @@ function toggleDirections(){
   }
 
   document.getElementById("navOverlay").classList.remove("hidden");
+  startCompass();
 
   watchId=navigator.geolocation.watchPosition(pos=>{
     userLatLng=L.latLng(pos.coords.latitude,pos.coords.longitude);
+    motionHeading=typeof pos.coords.heading==="number"&&!Number.isNaN(pos.coords.heading)
+      ?normalizeHeading(pos.coords.heading)
+      :null;
 
     if(!userMarker){
       userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981"}).addTo(map);
@@ -416,7 +755,7 @@ function returnToKeypad(){
   document.getElementById("operatorBackButton").classList.add("hidden");
   document.getElementById("keypad").classList.remove("hidden");
   document.getElementById("findButton").classList.remove("hidden");
-  document.getElementById("modeToggleBtn").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
 }
 
 function goBack(){
@@ -432,13 +771,55 @@ function goBack(){
 
   document.getElementById("keypad").classList.remove("hidden");
   document.getElementById("findButton").classList.remove("hidden");
-  document.getElementById("modeToggleBtn").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
+
+  resetDirectionsState();
+  document.getElementById("operatorLogo").innerHTML="";
 
   resetDirectionsState();
   document.getElementById("operatorLogo").innerHTML="";
 
   if(map){map.remove();map=null;}
 }
+  
+  function updateBusStatus(status, timestamp){
+  const statusEl = document.getElementById("busStatus");
+
+  if(!status){
+    statusEl.innerText = "";
+    return;
+  }
+
+  if(status === "live"){
+    statusEl.innerText = "● LIVE";
+    statusEl.style.background = "rgba(16,185,129,0.15)";
+    statusEl.style.color = "#10b981";
+  } else {
+    statusEl.innerText = `● OFFLINE — Last seen ${formatLastSeenLabel(timestamp)}`;
+    statusEl.style.background = "rgba(234,179,8,0.15)";
+    statusEl.style.color = "#eab308";
+  }
+}
+  
+</script>
+
+<script>
+const modeSwitchLabel=document.getElementById("modeSwitchLabel");
+let switchTouchStartX=0;
+
+modeSwitchLabel.addEventListener("touchstart",(event)=>{
+  switchTouchStartX=event.touches[0].clientX;
+},{passive:true});
+
+modeSwitchLabel.addEventListener("touchend",(event)=>{
+  const deltaX=event.changedTouches[0].clientX-switchTouchStartX;
+  const modeToggle=document.getElementById("modeToggle");
+  if(deltaX>20&&!modeToggle.checked){
+    handleModeSwitch(true);
+  }else if(deltaX<-20&&modeToggle.checked){
+    handleModeSwitch(false);
+  }
+},{passive:true});
 </script>
 
 </body>
