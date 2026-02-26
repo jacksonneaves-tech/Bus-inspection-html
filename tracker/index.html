@@ -643,13 +643,14 @@ function updateNavOverlay(){
   if(!userLatLng||!busLatLng||!map)return;
 
   const distance=Math.round(userLatLng.distanceTo(busLatLng));
-  const direction=getDirectionLabel(userLatLng,busLatLng).toLowerCase();
+  const direction=getDirectionLabel(userLatLng,busLatLng);
   document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
 
   const angle=map.latLngToLayerPoint(busLatLng).subtract(map.latLngToLayerPoint(userLatLng));
   const deg=(Math.atan2(angle.y,angle.x)*180/Math.PI)+90;
   document.getElementById("navArrow").style.transform=`rotate(${deg}deg)`;
 }
+
 
 
 function toggleDirections(){
