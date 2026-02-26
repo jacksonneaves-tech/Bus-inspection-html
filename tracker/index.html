@@ -243,6 +243,17 @@ body.landscape-trial-enabled .page2-map-wrap{
   position:relative;
 }
 
+@media (orientation: portrait){
+  #page2 .page2-layout{
+    display:flex;
+    flex-direction:column;
+  }
+
+  #page2 .page2-map-wrap{
+    order:-1;
+  }
+}
+
 @media (orientation: landscape) and (min-width: 900px){
   body.landscape-trial-enabled .card{
     max-width:980px;
