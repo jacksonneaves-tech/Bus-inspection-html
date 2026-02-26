@@ -50,6 +50,21 @@ body{
   min-height:520px;
 }
 
+.mode-logo-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:92px;
+  margin-bottom:8px;
+}
+
+.mode-logo-wrap img{
+  max-height:80px;
+  max-width:220px;
+  width:auto;
+  object-fit:contain;
+}
+
 h1{text-align:center;}
 
 .fleet-display{
@@ -82,7 +97,7 @@ h1{text-align:center;}
 
 .keypad button:hover{background:var(--accent-blue);}
 
-.find-btn,.back-btn,.mode-btn{
+.find-btn,.back-btn{
   margin-top:15px;
   width:100%;
   padding:14px;
@@ -94,8 +109,62 @@ h1{text-align:center;}
   cursor:pointer;
 }
 
-.find-btn:hover,.back-btn:hover,.mode-btn:hover{
+.find-btn:hover,.back-btn:hover{
   background:var(--accent-blue-hover);
+}
+
+.mode-switch-wrap{
+  margin-top:15px;
+  display:flex;
+  justify-content:center;
+}
+
+.mode-switch{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  user-select:none;
+  font-size:14px;
+  color:var(--text-muted);
+}
+
+.mode-switch input{display:none;}
+
+.mode-slider{
+  width:58px;
+  height:30px;
+  background:#0b1220;
+  border:1px solid var(--border-soft);
+  border-radius:999px;
+  position:relative;
+  transition:all 0.2s ease;
+  cursor:pointer;
+}
+
+.mode-slider::before{
+  content:"";
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#f8fafc;
+  transition:transform 0.2s ease;
+}
+
+.mode-switch input:checked + .mode-slider{
+  background:var(--accent-blue);
+}
+
+.mode-switch input:checked + .mode-slider::before{
+  transform:translateX(28px);
+}
+
+.mode-switch .active{
+  color:var(--text-light);
+  font-weight:600;
 }
 
 .operator-buttons button{
@@ -166,6 +235,9 @@ h1{text-align:center;}
 
 <!-- PAGE 1 -->
 <div id="page1">
+<div class="mode-logo-wrap" id="modeLogoWrap">
+  <img id="modeLogo" src="logos/vic.png" alt="Victoria logo">
+</div>
 <h1 id="pageTitle">Enter Fleet Number</h1>
 
 <div class="fleet-display" id="fleetDisplay"></div>
@@ -187,10 +259,14 @@ h1{text-align:center;}
 
 <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
 
-<!-- NSW Toggle BELOW Find Bus -->
-<button class="mode-btn" id="modeToggleBtn" onclick="toggleMode()">
-Switch to Rego Input (NSW)
-</button>
+<div class="mode-switch-wrap" id="modeToggleWrap">
+  <label class="mode-switch" id="modeSwitchLabel">
+    <span id="vicLabel" class="active">VIC</span>
+    <input type="checkbox" id="modeToggle" onchange="handleModeSwitch(this.checked)">
+    <span class="mode-slider"></span>
+    <span id="nswLabel">NSW</span>
+  </label>
+</div>
 
 <div class="operator-buttons hidden" id="operatorSection"></div>
 <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
@@ -231,18 +307,34 @@ let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsE
 /* ===== MODE TOGGLE ===== */
 function toggleMode(){
   clearFleet();
-  const btn=document.getElementById("modeToggleBtn");
   const title=document.getElementById("pageTitle");
+  const modeToggle=document.getElementById("modeToggle");
+  const modeLogo=document.getElementById("modeLogo");
+  const vicLabel=document.getElementById("vicLabel");
+  const nswLabel=document.getElementById("nswLabel");
 
   if(inputMode==="fleet"){
     inputMode="rego";
-    btn.innerText="Switch to Fleet Input (VIC)";
+    modeToggle.checked=true;
+    modeLogo.src="logos/nsw.png";
+    modeLogo.alt="NSW logo";
+    vicLabel.classList.remove("active");
+    nswLabel.classList.add("active");
     title.innerText="Enter NSW Rego";
   }else{
     inputMode="fleet";
-    btn.innerText="Switch to Rego Input (NSW)";
+    modeToggle.checked=false;
+    modeLogo.src="logos/vic.png";
+    modeLogo.alt="Victoria logo";
+    nswLabel.classList.remove("active");
+    vicLabel.classList.add("active");
     title.innerText="Enter Fleet Number";
   }
+}
+
+function handleModeSwitch(isNsw){
+  if((isNsw&&inputMode==="rego")||(!isNsw&&inputMode==="fleet"))return;
+  toggleMode();
 }
 
 /* ===== KEYPAD ===== */
@@ -290,7 +382,7 @@ async function findBus(){
 
     document.getElementById("keypad").classList.add("hidden");
     document.getElementById("findButton").classList.add("hidden");
-    document.getElementById("modeToggleBtn").classList.add("hidden");
+    document.getElementById("modeToggleWrap").classList.add("hidden");
     document.getElementById("operatorBackButton").classList.remove("hidden");
 
     data.options.forEach(rego=>{
@@ -317,7 +409,7 @@ async function findBus(){
 
     document.getElementById("keypad").classList.add("hidden");
     document.getElementById("findButton").classList.add("hidden");
-    document.getElementById("modeToggleBtn").classList.add("hidden");
+    document.getElementById("modeToggleWrap").classList.add("hidden");
     document.getElementById("operatorBackButton").classList.remove("hidden");
 
     data.operators.forEach(op=>{
@@ -481,7 +573,7 @@ function returnToKeypad(){
   document.getElementById("operatorBackButton").classList.add("hidden");
   document.getElementById("keypad").classList.remove("hidden");
   document.getElementById("findButton").classList.remove("hidden");
-  document.getElementById("modeToggleBtn").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
 }
 
 function goBack(){
@@ -497,7 +589,7 @@ function goBack(){
 
   document.getElementById("keypad").classList.remove("hidden");
   document.getElementById("findButton").classList.remove("hidden");
-  document.getElementById("modeToggleBtn").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
 
   resetDirectionsState();
   document.getElementById("operatorLogo").innerHTML="";
@@ -526,6 +618,25 @@ function goBack(){
   }
 }
   
+</script>
+
+<script>
+const modeSwitchLabel=document.getElementById("modeSwitchLabel");
+let switchTouchStartX=0;
+
+modeSwitchLabel.addEventListener("touchstart",(event)=>{
+  switchTouchStartX=event.touches[0].clientX;
+},{passive:true});
+
+modeSwitchLabel.addEventListener("touchend",(event)=>{
+  const deltaX=event.changedTouches[0].clientX-switchTouchStartX;
+  const modeToggle=document.getElementById("modeToggle");
+  if(deltaX>20&&!modeToggle.checked){
+    handleModeSwitch(true);
+  }else if(deltaX<-20&&modeToggle.checked){
+    handleModeSwitch(false);
+  }
+},{passive:true});
 </script>
 
 </body>
