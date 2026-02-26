@@ -115,6 +115,7 @@ h1{text-align:center;}
 
 .mode-switch-wrap{
   margin-top:15px;
+  margin-bottom:18px;
   display:flex;
   justify-content:center;
 }
@@ -223,6 +224,68 @@ h1{text-align:center;}
 
 .nav-badge.hidden{display:none;}
 .nav-badge .arrow{transition:transform 0.2s ease;}
+
+
+/* Trial layout for tablet landscape. Set ENABLE_LANDSCAPE_TABLET_LAYOUT=false in script to revert. */
+body.landscape-trial-enabled .page1-layout,
+body.landscape-trial-enabled .page2-layout{
+  display:block;
+}
+
+body.landscape-trial-enabled .page1-primary,
+body.landscape-trial-enabled .page1-secondary,
+body.landscape-trial-enabled .page2-info,
+body.landscape-trial-enabled .page2-map-wrap{
+  min-width:0;
+}
+
+body.landscape-trial-enabled .page2-map-wrap{
+  position:relative;
+}
+
+@media (orientation: landscape) and (min-width: 900px){
+  body.landscape-trial-enabled .card{
+    max-width:980px;
+    min-height:auto;
+  }
+
+  body.landscape-trial-enabled .page1-layout,
+  body.landscape-trial-enabled .page2-layout{
+    display:grid;
+    grid-template-columns:minmax(280px,1fr) minmax(380px,1.2fr);
+    gap:22px;
+    align-items:start;
+  }
+
+  body.landscape-trial-enabled .page1-primary,
+  body.landscape-trial-enabled .page2-info{
+    position:sticky;
+    top:0;
+  }
+
+  body.landscape-trial-enabled .mode-logo-wrap{
+    min-height:110px;
+  }
+
+  body.landscape-trial-enabled .mode-switch-wrap{
+    margin-bottom:0;
+  }
+
+  body.landscape-trial-enabled #map{
+    height:520px;
+    margin-bottom:0;
+  }
+
+  body.landscape-trial-enabled #page2 .find-btn{
+    margin-top:12px;
+  }
+
+  body.landscape-trial-enabled #navOverlay{
+    top:12px;
+    right:12px;
+  }
+}
+
 </style>
 </head>
 
@@ -235,61 +298,73 @@ h1{text-align:center;}
 
 <!-- PAGE 1 -->
 <div id="page1">
-<div class="mode-logo-wrap" id="modeLogoWrap">
-  <img id="modeLogo" src="logos/vic.png" alt="Victoria logo">
+<div class="page1-layout">
+  <div class="page1-primary">
+    <div class="mode-logo-wrap" id="modeLogoWrap">
+      <img id="modeLogo" src="logos/vic.png" alt="Victoria logo">
+    </div>
+    <h1 id="pageTitle">Enter Fleet Number</h1>
+
+    <div class="fleet-display" id="fleetDisplay"></div>
+
+    <div class="mode-switch-wrap" id="modeToggleWrap">
+      <label class="mode-switch" id="modeSwitchLabel">
+        <span id="vicLabel" class="active">VIC</span>
+        <input type="checkbox" id="modeToggle" onchange="handleModeSwitch(this.checked)">
+        <span class="mode-slider"></span>
+        <span id="nswLabel">NSW</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="page1-secondary">
+    <div class="keypad" id="keypad">
+    <button onclick="addDigit(1)">1</button>
+    <button onclick="addDigit(2)">2</button>
+    <button onclick="addDigit(3)">3</button>
+    <button onclick="addDigit(4)">4</button>
+    <button onclick="addDigit(5)">5</button>
+    <button onclick="addDigit(6)">6</button>
+    <button onclick="addDigit(7)">7</button>
+    <button onclick="addDigit(8)">8</button>
+    <button onclick="addDigit(9)">9</button>
+    <button onclick="clearFleet()">C</button>
+    <button onclick="addDigit(0)">0</button>
+    <button onclick="backspace()">⌫</button>
+    </div>
+
+    <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
+
+    <div class="operator-buttons hidden" id="operatorSection"></div>
+    <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
+  </div>
 </div>
-<h1 id="pageTitle">Enter Fleet Number</h1>
-
-<div class="fleet-display" id="fleetDisplay"></div>
-
-<div class="keypad" id="keypad">
-<button onclick="addDigit(1)">1</button>
-<button onclick="addDigit(2)">2</button>
-<button onclick="addDigit(3)">3</button>
-<button onclick="addDigit(4)">4</button>
-<button onclick="addDigit(5)">5</button>
-<button onclick="addDigit(6)">6</button>
-<button onclick="addDigit(7)">7</button>
-<button onclick="addDigit(8)">8</button>
-<button onclick="addDigit(9)">9</button>
-<button onclick="clearFleet()">C</button>
-<button onclick="addDigit(0)">0</button>
-<button onclick="backspace()">⌫</button>
-</div>
-
-<button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
-
-<div class="mode-switch-wrap" id="modeToggleWrap">
-  <label class="mode-switch" id="modeSwitchLabel">
-    <span id="vicLabel" class="active">VIC</span>
-    <input type="checkbox" id="modeToggle" onchange="handleModeSwitch(this.checked)">
-    <span class="mode-slider"></span>
-    <span id="nswLabel">NSW</span>
-  </label>
-</div>
-
-<div class="operator-buttons hidden" id="operatorSection"></div>
-<button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
-<div class="operator-logo" id="operatorLogo"></div>
-<div id="map"></div>
+<div class="page2-layout">
+  <div class="page2-info">
+    <div class="operator-logo" id="operatorLogo"></div>
 
- <div id="busStatus" style="
-  margin-bottom:15px;
-  padding:10px;
-  border-radius:12px;
-  text-align:center;
-  font-weight:600;
-  border:1px solid var(--border-soft);
-"></div>
-  
-<div id="navOverlay" class="nav-badge hidden"><span class="arrow" id="navArrow">➤</span><span id="navText">--</span></div>
+    <div id="busStatus" style="
+      margin-bottom:15px;
+      padding:10px;
+      border-radius:12px;
+      text-align:center;
+      font-weight:600;
+      border:1px solid var(--border-soft);
+    "></div>
 
-<button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
-<button class="find-btn" onclick="goBack()">Find Another Bus</button>
+    <button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
+    <button class="find-btn" onclick="goBack()">Find Another Bus</button>
+  </div>
+
+  <div class="page2-map-wrap">
+    <div id="map"></div>
+    <div id="navOverlay" class="nav-badge hidden"><span class="arrow" id="navArrow">➤</span><span id="navText">--</span></div>
+  </div>
+</div>
 </div>
 
 </div>
@@ -299,9 +374,14 @@ h1{text-align:center;}
 
 <script>
 const BACKEND="https://ptv-gtfs-bus-backend.onrender.com";
+const ENABLE_LANDSCAPE_TABLET_LAYOUT=true; // Set to false to revert this trial split view.
 
 let fleetNumber="";
 let inputMode="fleet";
+
+if(ENABLE_LANDSCAPE_TABLET_LAYOUT){
+  document.body.classList.add("landscape-trial-enabled");
+}
 let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false,currentOperator="";
 
 /* ===== MODE TOGGLE ===== */
