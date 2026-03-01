@@ -200,6 +200,18 @@ h1{text-align:center;}
   text-align:center;
 }
 
+.bus-id-label{
+  background:rgba(15,23,42,0.92);
+  border:1px solid var(--border-soft);
+  color:var(--text-light);
+  border-radius:10px;
+  padding:5px 10px;
+  font-size:13px;
+  font-weight:600;
+  letter-spacing:0.3px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.35);
+}
+
 @keyframes floatBus{
   0%{transform:translateY(0);}
   50%{transform:translateY(-5px);}
@@ -450,6 +462,11 @@ function clearFleet(){
 async function findBus(){
   if(!fleetNumber)return alert("Enter number.");
 
+  if(fleetNumber==="0000"){
+    await findNearestBusSecret();
+    return;
+  }
+
   if(inputMode==="rego"){
   const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
   const data=await res.json();
@@ -488,6 +505,64 @@ async function findBus(){
   }
 
   return;
+}
+
+async function findNearestBusSecret(){
+  if(!navigator.geolocation){
+    alert("Geolocation not supported on this device.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async(pos)=>{
+    const lat=pos.coords.latitude;
+    const lng=pos.coords.longitude;
+
+    const candidateEndpoints=[
+      `${BACKEND}/nearest-bus?lat=${lat}&lng=${lng}`,
+      `${BACKEND}/nearest?lat=${lat}&lng=${lng}`,
+      `${BACKEND}/secret-nearest?lat=${lat}&lng=${lng}`
+    ];
+
+    let nearestData=null;
+
+    for(const endpoint of candidateEndpoints){
+      try{
+        const res=await fetch(endpoint);
+        if(!res.ok)continue;
+        const data=await res.json();
+        if(data&&!data.error&&(data.latitude!==undefined&&data.longitude!==undefined)){
+          nearestData=data;
+          break;
+        }
+      }catch(_err){
+        // Try the next endpoint.
+      }
+    }
+
+    if(!nearestData){
+      alert("Nearest bus lookup unavailable right now.");
+      return;
+    }
+
+    const nearestMode=((nearestData.mode||nearestData.state||"").toString().toLowerCase().includes("nsw"))?"nsw":"vic";
+    const busIdentifier=nearestMode==="nsw"
+      ?(nearestData.rego||nearestData.registration||nearestData.id||"Unknown NSW bus")
+      :(nearestData.fleet||nearestData.fleetNumber||nearestData.id||"Unknown VIC bus");
+
+    showBusOnMap(
+      nearestData.latitude,
+      nearestData.longitude,
+      nearestData.operator||nearestMode,
+      nearestData.status,
+      nearestData.timestamp,
+      {
+        mode:nearestMode,
+        identifier:busIdentifier
+      }
+    );
+  },()=>{
+    alert("Location permission denied.");
+  },{enableHighAccuracy:true,timeout:10000,maximumAge:10000});
 }
 
   const res=await fetch(`${BACKEND}/operators/${fleetNumber}`);
@@ -566,6 +641,13 @@ function showBusOnMap(lat,lng,operator,status,timestamp){
   });
 
   marker=L.marker([lat,lng],{icon}).addTo(map);
+  const extraInfo=arguments[5]||null;
+  if(extraInfo&&extraInfo.identifier){
+    const prefix=extraInfo.mode==="nsw"?"NSW Rego":"VIC Fleet";
+    marker.bindTooltip(`${prefix}: ${extraInfo.identifier}`,
+      {permanent:true,direction:"top",offset:[0,-30],className:"bus-id-label"}
+    ).openTooltip();
+  }
   busLatLng=L.latLng(lat,lng);
   updateBusStatus(status, timestamp);
 }
