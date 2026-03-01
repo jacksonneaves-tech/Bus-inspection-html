@@ -1,403 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Fleet Tracking</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f172a">
-<link rel="apple-touch-icon" href="icon-192.png">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<style>
-:root {
-  --bg-dark:#0f172a;
-  --card-dark:#1e293b;
-  --accent-blue:#2563eb;
-  --accent-blue-hover:#1d4ed8;
-  --text-light:#f1f5f9;
-  --text-muted:#94a3b8;
-  --border-soft:rgba(255,255,255,0.08);
-}
-
-body{
-  margin:0;
-  font-family:"Segoe UI",Roboto,sans-serif;
-  background:linear-gradient(145deg,#0f172a,#1e293b);
-  color:var(--text-light);
-}
-
-.header{
-  padding:20px;
-  background:#0b1220;
-  border-bottom:1px solid var(--border-soft);
-  text-align:center;
-  font-weight:600;
-}
-
-.container{padding:20px;}
-
-.card{
-  max-width:520px;
-  margin:auto;
-  background:var(--card-dark);
-  padding:30px;
-  border-radius:20px;
-  box-shadow:0 20px 40px rgba(0,0,0,0.4);
-  border:1px solid var(--border-soft);
-  min-height:520px;
-}
-
-.mode-logo-wrap{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:92px;
-  margin-bottom:8px;
-}
-
-.mode-logo-wrap img{
-  max-height:80px;
-  max-width:220px;
-  width:auto;
-  object-fit:contain;
-}
-
-h1{text-align:center;}
-
-.fleet-display{
-  text-align:center;
-  font-size:28px;
-  letter-spacing:4px;
-  padding:15px;
-  border:1px solid var(--border-soft);
-  border-radius:14px;
-  margin-bottom:20px;
-  min-height:32px;
-}
-
-.keypad{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:12px;
-}
-
-.keypad button{
-  padding:18px;
-  font-size:20px;
-  border-radius:14px;
-  border:none;
-  background:#0f172a;
-  color:var(--text-light);
-  cursor:pointer;
-  border:1px solid var(--border-soft);
-}
-
-.keypad button:hover{background:var(--accent-blue);}
-
-.find-btn,.back-btn{
-  margin-top:15px;
-  width:100%;
-  padding:14px;
-  border-radius:12px;
-  border:none;
-  background:var(--accent-blue);
-  color:white;
-  font-weight:600;
-  cursor:pointer;
-}
-
-.find-btn:hover,.back-btn:hover{
-  background:var(--accent-blue-hover);
-}
-
-.mode-switch-wrap{
-  margin-top:15px;
-  margin-bottom:18px;
-  display:flex;
-  justify-content:center;
-}
-
-.mode-switch{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  user-select:none;
-  font-size:14px;
-  color:var(--text-muted);
-}
-
-.mode-switch input{display:none;}
-
-.mode-slider{
-  width:58px;
-  height:30px;
-  background:#f97316;
-  border:1px solid var(--border-soft);
-  border-radius:999px;
-  position:relative;
-  transition:all 0.2s ease;
-  cursor:pointer;
-}
-
-.mode-slider::before{
-  content:"";
-  position:absolute;
-  top:3px;
-  left:3px;
-  width:22px;
-  height:22px;
-  border-radius:50%;
-  background:#f8fafc;
-  transition:transform 0.2s ease;
-}
-
-.mode-switch input:checked + .mode-slider{
-  background:var(--accent-blue);
-}
-
-.mode-switch input:checked + .mode-slider::before{
-  transform:translateX(28px);
-}
-
-.mode-switch .active{
-  color:var(--text-light);
-  font-weight:600;
-}
-
-.operator-buttons button{
-  width:100%;
-  margin-top:10px;
-  padding:14px;
-  border-radius:12px;
-  border:1px solid var(--border-soft);
-  background:transparent;
-  color:var(--text-light);
-  cursor:pointer;
-}
-
-.operator-buttons button:hover{background:var(--accent-blue);}
-
-.hidden{display:none;}
-
-#map{
-  height:420px;
-  border-radius:16px;
-  margin-bottom:15px;
-}
-
-#page2{position:relative;}
-
-.operator-logo{text-align:center;margin-bottom:15px;}
-.operator-logo img{max-height:80px;}
-
-.bus-marker{
-  font-size:42px;
-  animation:floatBus 2s ease-in-out infinite;
-  text-align:center;
-}
-
-.bus-id-label{
-  background:rgba(15,23,42,0.92);
-  border:1px solid var(--border-soft);
-  color:var(--text-light);
-  border-radius:10px;
-  padding:5px 10px;
-  font-size:13px;
-  font-weight:600;
-  letter-spacing:0.3px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.35);
-}
-
-@keyframes floatBus{
-  0%{transform:translateY(0);}
-  50%{transform:translateY(-5px);}
-  100%{transform:translateY(0);}
-}
-
-.nav-badge{
-  position:absolute;
-  top:115px;
-  right:12px;
-  z-index:500;
-  background:rgba(15,23,42,0.9);
-  border:1px solid var(--border-soft);
-  color:var(--text-light);
-  padding:8px 12px;
-  border-radius:12px;
-  font-size:14px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-.nav-badge.hidden{display:none;}
-.nav-badge .arrow{transition:transform 0.2s ease;}
-
-
-/* Trial layout for tablet landscape. Set ENABLE_LANDSCAPE_TABLET_LAYOUT=false in script to revert. */
-body.landscape-trial-enabled .page1-layout,
-body.landscape-trial-enabled .page2-layout{
-  display:block;
-}
-
-body.landscape-trial-enabled .page1-primary,
-body.landscape-trial-enabled .page1-secondary,
-body.landscape-trial-enabled .page2-info,
-body.landscape-trial-enabled .page2-map-wrap{
-  min-width:0;
-}
-
-body.landscape-trial-enabled .page2-map-wrap{
-  position:relative;
-}
-
-@media (orientation: portrait){
-  #page2 .page2-layout{
-    display:flex;
-    flex-direction:column;
-  }
-
-  #page2 .page2-map-wrap{
-    order:-1;
-  }
-}
-
-@media (orientation: landscape) and (min-width: 900px){
-  body.landscape-trial-enabled .card{
-    max-width:980px;
-    min-height:auto;
-  }
-
-  body.landscape-trial-enabled .page1-layout,
-  body.landscape-trial-enabled .page2-layout{
-    display:grid;
-    grid-template-columns:minmax(280px,1fr) minmax(380px,1.2fr);
-    gap:22px;
-    align-items:start;
-  }
-
-  body.landscape-trial-enabled .page1-primary,
-  body.landscape-trial-enabled .page2-info{
-    position:sticky;
-    top:0;
-  }
-
-  body.landscape-trial-enabled .mode-logo-wrap{
-    min-height:110px;
-  }
-
-  body.landscape-trial-enabled .mode-switch-wrap{
-    margin-bottom:0;
-  }
-
-  body.landscape-trial-enabled #map{
-    height:520px;
-    margin-bottom:0;
-  }
-
-  body.landscape-trial-enabled #page2 .find-btn{
-    margin-top:12px;
-  }
-
-  body.landscape-trial-enabled #navOverlay{
-    top:12px;
-    right:12px;
-  }
-}
-
-</style>
-</head>
-
-<body>
-
-<div class="header">FLEET TRACKING</div>
-
-<div class="container">
-<div class="card">
-
-<!-- PAGE 1 -->
-<div id="page1">
-<div class="page1-layout">
-  <div class="page1-primary">
-    <div class="mode-logo-wrap" id="modeLogoWrap">
-      <img id="modeLogo" src="logos/vic.png" alt="Victoria logo">
-    </div>
-    <h1 id="pageTitle">Enter Fleet Number</h1>
-
-    <div class="fleet-display" id="fleetDisplay"></div>
-
-    <div class="mode-switch-wrap" id="modeToggleWrap">
-      <label class="mode-switch" id="modeSwitchLabel">
-        <span id="vicLabel" class="active">VIC</span>
-        <input type="checkbox" id="modeToggle" onchange="handleModeSwitch(this.checked)">
-        <span class="mode-slider"></span>
-        <span id="nswLabel">NSW</span>
-      </label>
-    </div>
-  </div>
-
-  <div class="page1-secondary">
-    <div class="keypad" id="keypad">
-    <button onclick="addDigit(1)">1</button>
-    <button onclick="addDigit(2)">2</button>
-    <button onclick="addDigit(3)">3</button>
-    <button onclick="addDigit(4)">4</button>
-    <button onclick="addDigit(5)">5</button>
-    <button onclick="addDigit(6)">6</button>
-    <button onclick="addDigit(7)">7</button>
-    <button onclick="addDigit(8)">8</button>
-    <button onclick="addDigit(9)">9</button>
-    <button onclick="clearFleet()">C</button>
-    <button onclick="addDigit(0)">0</button>
-    <button onclick="backspace()">⌫</button>
-    </div>
-
-    <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
-
-    <div class="operator-buttons hidden" id="operatorSection"></div>
-    <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
-  </div>
-</div>
-</div>
-
-<!-- PAGE 2 -->
-<div id="page2" class="hidden">
-<div class="page2-layout">
-  <div class="page2-info">
-    <div class="operator-logo" id="operatorLogo"></div>
-
-    <div id="busStatus" style="
-      margin-bottom:15px;
-      padding:10px;
-      border-radius:12px;
-      text-align:center;
-      font-weight:600;
-      border:1px solid var(--border-soft);
-    "></div>
-
-    <button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
-    <button class="find-btn" onclick="goBack()">Find Another Bus</button>
-  </div>
-
-  <div class="page2-map-wrap">
-    <div id="map"></div>
-    <div id="navOverlay" class="nav-badge hidden"><span class="arrow" id="navArrow">➤</span><span id="navText">--</span></div>
-  </div>
-</div>
-</div>
-
-</div>
-</div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 const BACKEND="https://ptv-gtfs-bus-backend.onrender.com";
-const ENABLE_LANDSCAPE_TABLET_LAYOUT=true; // Set to false to revert this trial split view.
+const ENABLE_LANDSCAPE_TABLET_LAYOUT=true;
 
 let fleetNumber="";
 let inputMode="fleet";
@@ -405,12 +10,13 @@ let inputMode="fleet";
 if(ENABLE_LANDSCAPE_TABLET_LAYOUT){
   document.body.classList.add("landscape-trial-enabled");
 }
+
 let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false,currentOperator="";
 let deviceHeading=null;
 let motionHeading=null;
 let compassListener=null;
 
-/* ===== MODE TOGGLE ===== */
+/* ================= MODE ================= */
 function toggleMode(){
   clearFleet();
   const title=document.getElementById("pageTitle");
@@ -423,18 +29,16 @@ function toggleMode(){
     inputMode="rego";
     modeToggle.checked=true;
     modeLogo.src="logos/nsw.png";
-    modeLogo.alt="NSW logo";
+    title.innerText="Enter NSW Rego";
     vicLabel.classList.remove("active");
     nswLabel.classList.add("active");
-    title.innerText="Enter NSW Rego";
   }else{
     inputMode="fleet";
     modeToggle.checked=false;
     modeLogo.src="logos/vic.png";
-    modeLogo.alt="Victoria logo";
+    title.innerText="Enter Fleet Number";
     nswLabel.classList.remove("active");
     vicLabel.classList.add("active");
-    title.innerText="Enter Fleet Number";
   }
 }
 
@@ -443,131 +47,70 @@ function handleModeSwitch(isNsw){
   toggleMode();
 }
 
-/* ===== KEYPAD ===== */
+/* ================= KEYPAD ================= */
 function addDigit(n){
   if(fleetNumber.length>=8)return;
   fleetNumber+=n;
   document.getElementById("fleetDisplay").innerText=fleetNumber;
 }
+
 function backspace(){
   fleetNumber=fleetNumber.slice(0,-1);
   document.getElementById("fleetDisplay").innerText=fleetNumber;
 }
+
 function clearFleet(){
   fleetNumber="";
   document.getElementById("fleetDisplay").innerText="";
 }
 
-/* ===== FIND BUS ===== */
+/* ================= FIND BUS ================= */
 async function findBus(){
-  if(!fleetNumber)return alert("Enter number.");
+  if(!fleetNumber) return alert("Enter number.");
 
+  /* ===== SECRET FEATURE ===== */
   if(fleetNumber==="0000"){
-    await findNearestBusSecret();
+    await findNearestBus();
     return;
   }
 
+  /* ===== NSW MODE ===== */
   if(inputMode==="rego"){
-  const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
-  const data=await res.json();
+    const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
+    const data=await res.json();
 
-  if(data.error){
-    return alert("NSW bus not found.");
-  }
+    if(data.error) return alert("NSW bus not found.");
 
-  if(data.single){
-    showBusOnMap(
-      data.latitude,
-      data.longitude,
-      "nsw",
-      data.status,
-      data.timestamp
-    );
-    return;
-  }
-
-  if(data.multiple){
-    const container=document.getElementById("operatorSection");
-    container.innerHTML="";
-    container.classList.remove("hidden");
-
-    document.getElementById("keypad").classList.add("hidden");
-    document.getElementById("findButton").classList.add("hidden");
-    document.getElementById("modeToggleWrap").classList.add("hidden");
-    document.getElementById("operatorBackButton").classList.remove("hidden");
-
-    data.options.forEach(rego=>{
-      const btn=document.createElement("button");
-      btn.innerText=rego;
-      btn.onclick=()=>loadNswExact(rego);
-      container.appendChild(btn);
-    });
-  }
-
-  return;
-}
-
-async function findNearestBusSecret(){
-  if(!navigator.geolocation){
-    alert("Geolocation not supported on this device.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(async(pos)=>{
-    const lat=pos.coords.latitude;
-    const lng=pos.coords.longitude;
-
-    const candidateEndpoints=[
-      `${BACKEND}/nearest-bus?lat=${lat}&lng=${lng}`,
-      `${BACKEND}/nearest?lat=${lat}&lng=${lng}`,
-      `${BACKEND}/secret-nearest?lat=${lat}&lng=${lng}`
-    ];
-
-    let nearestData=null;
-
-    for(const endpoint of candidateEndpoints){
-      try{
-        const res=await fetch(endpoint);
-        if(!res.ok)continue;
-        const data=await res.json();
-        if(data&&!data.error&&(data.latitude!==undefined&&data.longitude!==undefined)){
-          nearestData=data;
-          break;
-        }
-      }catch(_err){
-        // Try the next endpoint.
-      }
-    }
-
-    if(!nearestData){
-      alert("Nearest bus lookup unavailable right now.");
+    if(data.single){
+      showBusOnMap(data.latitude,data.longitude,"nsw",data.status,data.timestamp);
       return;
     }
 
-    const nearestMode=((nearestData.mode||nearestData.state||"").toString().toLowerCase().includes("nsw"))?"nsw":"vic";
-    const busIdentifier=nearestMode==="nsw"
-      ?(nearestData.rego||nearestData.registration||nearestData.id||"Unknown NSW bus")
-      :(nearestData.fleet||nearestData.fleetNumber||nearestData.id||"Unknown VIC bus");
+    if(data.multiple){
+      const container=document.getElementById("operatorSection");
+      container.innerHTML="";
+      container.classList.remove("hidden");
 
-    showBusOnMap(
-      nearestData.latitude,
-      nearestData.longitude,
-      nearestData.operator||nearestMode,
-      nearestData.status,
-      nearestData.timestamp,
-      {
-        mode:nearestMode,
-        identifier:busIdentifier
-      }
-    );
-  },()=>{
-    alert("Location permission denied.");
-  },{enableHighAccuracy:true,timeout:10000,maximumAge:10000});
-}
+      document.getElementById("keypad").classList.add("hidden");
+      document.getElementById("findButton").classList.add("hidden");
+      document.getElementById("modeToggleWrap").classList.add("hidden");
+      document.getElementById("operatorBackButton").classList.remove("hidden");
 
+      data.options.forEach(rego=>{
+        const btn=document.createElement("button");
+        btn.innerText=rego;
+        btn.onclick=()=>loadNswExact(rego);
+        container.appendChild(btn);
+      });
+    }
+    return;
+  }
+
+  /* ===== VIC MODE ===== */
   const res=await fetch(`${BACKEND}/operators/${fleetNumber}`);
   const data=await res.json();
-  if(data.error)return alert("Fleet not found.");
+
+  if(data.error) return alert("Fleet not found.");
 
   if(data.operators.length===1){
     loadBus(fleetNumber,data.operators[0]);
@@ -590,319 +133,46 @@ async function findNearestBusSecret(){
   }
 }
 
+/* ===== SECRET NEAREST BUS ===== */
+async function findNearestBus(){
+  if(!navigator.geolocation){
+    alert("Geolocation not supported.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async(pos)=>{
+    const lat=pos.coords.latitude;
+    const lng=pos.coords.longitude;
+
+    const res=await fetch(`${BACKEND}/nearest?lat=${lat}&lng=${lng}`);
+    const data=await res.json();
+
+    if(data.error) return alert("Nearest bus unavailable.");
+
+    showBusOnMap(
+      data.latitude,
+      data.longitude,
+      data.operator||"vic",
+      data.status,
+      data.timestamp
+    );
+  },()=>{
+    alert("Location permission denied.");
+  },{enableHighAccuracy:true});
+}
+
+/* ===== LOADERS ===== */
 async function loadBus(fleet,operator){
   const res=await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
   const data=await res.json();
   if(data.error)return alert("Bus not active.");
-  showBusOnMap(
-  data.latitude,
-  data.longitude,
-  operator,
-  data.status,
-  data.timestamp
-);
+  showBusOnMap(data.latitude,data.longitude,operator,data.status,data.timestamp);
 }
-  async function loadNswExact(rego){
+
+async function loadNswExact(rego){
   const res=await fetch(`${BACKEND}/nsw-exact/${rego}`);
   const data=await res.json();
-
-  if(data.error){
-    return alert("NSW bus not found.");
-  }
-
-  showBusOnMap(
-    data.latitude,
-    data.longitude,
-    "nsw",
-    data.status,
-    data.timestamp
-  );
+  if(data.error)return alert("NSW bus not found.");
+  showBusOnMap(data.latitude,data.longitude,"nsw",data.status,data.timestamp);
 }
-
-/* ===== MAP ===== */
-function showBusOnMap(lat,lng,operator,status,timestamp){
-  document.getElementById("page1").classList.add("hidden");
-  document.getElementById("page2").classList.remove("hidden");
-
-  currentOperator=operator||"";
-  renderOperatorLogo(currentOperator);
-  resetDirectionsState();
-
-  if(map)map.remove();
-  map=L.map("map").setView([lat,lng],16);
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-  const icon=L.divIcon({
-    html:`<div class="bus-marker">🚌</div>`,
-    className:"",
-    iconSize:[60,60],
-    iconAnchor:[30,30]
-  });
-
-  marker=L.marker([lat,lng],{icon}).addTo(map);
-  const extraInfo=arguments[5]||null;
-  if(extraInfo&&extraInfo.identifier){
-    const prefix=extraInfo.mode==="nsw"?"NSW Rego":"VIC Fleet";
-    marker.bindTooltip(`${prefix}: ${extraInfo.identifier}`,
-      {permanent:true,direction:"top",offset:[0,-30],className:"bus-id-label"}
-    ).openTooltip();
-  }
-  busLatLng=L.latLng(lat,lng);
-  updateBusStatus(status, timestamp);
-}
-
-/* ===== DIRECTIONS ===== */
-
-function renderOperatorLogo(operator){
-  const logoEl=document.getElementById("operatorLogo");
-  const logoMap=[
-    {match:"ventura",file:"ventura.png",alt:"Ventura"},
-    {match:"dyson",file:"dysons.png",alt:"Dysons"},
-    {match:"skybus",file:"skybus.png",alt:"SkyBus"},
-    {match:"cdc",file:"cdc.png",alt:"CDC"},
-    {match:"kinetic",file:"kinetic.png",alt:"Kinetic"},
-    {match:"nsw",file:"nsw.png",alt:"Transport for NSW"}
-  ];
-
-  const key=(operator||"").toLowerCase();
-  const found=logoMap.find(item=>key.includes(item.match));
-
-  if(found){
-    logoEl.innerHTML=`<img src="logos/${found.file}" alt="${found.alt} logo">`;
-  }else{
-    logoEl.innerHTML="";
-  }
-}
-
-function resetDirectionsState(){
-  directionsEnabled=false;
-  document.getElementById("directionsBtn").innerText="Directions to Bus";
-  document.getElementById("navOverlay").classList.add("hidden");
-
-  if(watchId){
-    navigator.geolocation.clearWatch(watchId);
-    watchId=null;
-  }
-  if(pathLine&&map)map.removeLayer(pathLine);
-  if(userMarker&&map)map.removeLayer(userMarker);
-
-  pathLine=null;
-  userMarker=null;
-  userLatLng=null;
-  stopCompass();
-}
-
-function getDirectionLabel(from,to){
-  const latDiff=to.lat-from.lat;
-  const lngDiff=to.lng-from.lng;
-  const ns=latDiff>=0?"N":"S";
-  const ew=lngDiff>=0?"E":"W";
-  return `${ns}/${ew}`;
-}
-
-function normalizeHeading(deg){
-  return ((deg%360)+360)%360;
-}
-
-function getBearing(from,to){
-  const fromLat=from.lat*Math.PI/180;
-  const toLat=to.lat*Math.PI/180;
-  const dLng=(to.lng-from.lng)*Math.PI/180;
-  const y=Math.sin(dLng)*Math.cos(toLat);
-  const x=Math.cos(fromLat)*Math.sin(toLat)-Math.sin(fromLat)*Math.cos(toLat)*Math.cos(dLng);
-  return normalizeHeading(Math.atan2(y,x)*180/Math.PI);
-}
-
-function resolveDeviceHeading(event){
-  if(typeof event.webkitCompassHeading==="number"){
-    return normalizeHeading(event.webkitCompassHeading);
-  }
-
-  if(typeof event.alpha==="number"){
-    return normalizeHeading(360-event.alpha);
-  }
-
-  return null;
-}
-
-async function startCompass(){
-  if(compassListener)return;
-
-  if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
-    try{
-      const permission=await DeviceOrientationEvent.requestPermission();
-      if(permission!=="granted")return;
-    }catch(_err){
-      return;
-    }
-  }
-
-  compassListener=(event)=>{
-    const heading=resolveDeviceHeading(event);
-    if(heading!==null){
-      deviceHeading=heading;
-      updateNavOverlay();
-    }
-  };
-
-  window.addEventListener("deviceorientationabsolute",compassListener,true);
-  window.addEventListener("deviceorientation",compassListener,true);
-}
-
-function stopCompass(){
-  if(!compassListener)return;
-  window.removeEventListener("deviceorientationabsolute",compassListener,true);
-  window.removeEventListener("deviceorientation",compassListener,true);
-  compassListener=null;
-  deviceHeading=null;
-  motionHeading=null;
-}
-
-function formatDistanceLabel(distanceMeters){
-  if(distanceMeters<=999){
-    return `${distanceMeters}m`;
-  }
-
-  return `${(distanceMeters/1000).toFixed(1)}km`;
-}
-
-function formatLastSeenLabel(timestamp){
-  const mins=Math.max(0,Math.floor((Date.now()-timestamp)/60000));
-
-  if(mins<60){
-    return `${mins} min${mins!==1?"s":""} ago`;
-  }
-
-  const hours=Math.floor(mins/60);
-  if(hours<24){
-    return `${hours} hour${hours!==1?"s":""} ago`;
-  }
-
-  const days=Math.floor(hours/24);
-  return `${days} day${days!==1?"s":""} ago`;
-}
-
-function updateNavOverlay(){
-  if(!userLatLng||!busLatLng||!map)return;
-
-  const distance=Math.round(userLatLng.distanceTo(busLatLng));
-  const direction=getDirectionLabel(userLatLng,busLatLng);
-  document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
-
-  const bearingToBus=getBearing(userLatLng,busLatLng);
-  const heading=deviceHeading??motionHeading;
-  const deg=heading===null?bearingToBus:normalizeHeading(bearingToBus-heading);
-  document.getElementById("navArrow").style.transform=`rotate(${deg}deg)`;
-}
-
-
-function toggleDirections(){
-  directionsEnabled=!directionsEnabled;
-  document.getElementById("directionsBtn").innerText=
-    directionsEnabled?"Hide Directions":"Directions to Bus";
-
-  if(!directionsEnabled){
-    resetDirectionsState();
-    return;
-  }
-
-  document.getElementById("navOverlay").classList.remove("hidden");
-  startCompass();
-
-  watchId=navigator.geolocation.watchPosition(pos=>{
-    userLatLng=L.latLng(pos.coords.latitude,pos.coords.longitude);
-    motionHeading=typeof pos.coords.heading==="number"&&!Number.isNaN(pos.coords.heading)
-      ?normalizeHeading(pos.coords.heading)
-      :null;
-
-    if(!userMarker){
-      userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981"}).addTo(map);
-    }else userMarker.setLatLng(userLatLng);
-
-    if(!pathLine){
-      pathLine=L.polyline([userLatLng,busLatLng],{color:"#60a5fa"}).addTo(map);
-    }else pathLine.setLatLngs([userLatLng,busLatLng]);
-
-    updateNavOverlay();
-  },()=>{
-    alert("Location permission denied");
-    resetDirectionsState();
-  },{enableHighAccuracy:true});
-}
-
-/* ===== NAVIGATION ===== */
-function returnToKeypad(){
-  document.getElementById("operatorSection").classList.add("hidden");
-  document.getElementById("operatorBackButton").classList.add("hidden");
-  document.getElementById("keypad").classList.remove("hidden");
-  document.getElementById("findButton").classList.remove("hidden");
-  document.getElementById("modeToggleWrap").classList.remove("hidden");
-}
-
-function goBack(){
-  document.getElementById("page2").classList.add("hidden");
-  document.getElementById("page1").classList.remove("hidden");
-
-  fleetNumber="";
-  document.getElementById("fleetDisplay").innerText="";
-
-  document.getElementById("operatorSection").innerHTML="";
-  document.getElementById("operatorSection").classList.add("hidden");
-  document.getElementById("operatorBackButton").classList.add("hidden");
-
-  document.getElementById("keypad").classList.remove("hidden");
-  document.getElementById("findButton").classList.remove("hidden");
-  document.getElementById("modeToggleWrap").classList.remove("hidden");
-
-  resetDirectionsState();
-  document.getElementById("operatorLogo").innerHTML="";
-
-  resetDirectionsState();
-  document.getElementById("operatorLogo").innerHTML="";
-
-  if(map){map.remove();map=null;}
-}
-  
-  function updateBusStatus(status, timestamp){
-  const statusEl = document.getElementById("busStatus");
-
-  if(!status){
-    statusEl.innerText = "";
-    return;
-  }
-
-  if(status === "live"){
-    statusEl.innerText = "● LIVE";
-    statusEl.style.background = "rgba(16,185,129,0.15)";
-    statusEl.style.color = "#10b981";
-  } else {
-    statusEl.innerText = `● OFFLINE — Last seen ${formatLastSeenLabel(timestamp)}`;
-    statusEl.style.background = "rgba(234,179,8,0.15)";
-    statusEl.style.color = "#eab308";
-  }
-}
-  
 </script>
-
-<script>
-const modeSwitchLabel=document.getElementById("modeSwitchLabel");
-let switchTouchStartX=0;
-
-modeSwitchLabel.addEventListener("touchstart",(event)=>{
-  switchTouchStartX=event.touches[0].clientX;
-},{passive:true});
-
-modeSwitchLabel.addEventListener("touchend",(event)=>{
-  const deltaX=event.changedTouches[0].clientX-switchTouchStartX;
-  const modeToggle=document.getElementById("modeToggle");
-  if(deltaX>20&&!modeToggle.checked){
-    handleModeSwitch(true);
-  }else if(deltaX<-20&&modeToggle.checked){
-    handleModeSwitch(false);
-  }
-},{passive:true});
-</script>
-
-</body>
-</html>
