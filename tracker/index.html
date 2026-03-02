@@ -759,4 +759,65 @@ function returnToKeypad(){
 }
 
 function goBack(){
-  document.getElementById("pag
+  document.getElementById("page2").classList.add("hidden");
+  document.getElementById("page1").classList.remove("hidden");
+
+  fleetNumber="";
+  document.getElementById("fleetDisplay").innerText="";
+
+  document.getElementById("operatorSection").innerHTML="";
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("operatorBackButton").classList.add("hidden");
+
+  document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
+
+  resetDirectionsState();
+  document.getElementById("operatorLogo").innerHTML="";
+
+  if(map){map.remove();map=null;}
+}
+  
+  function updateBusStatus(status, timestamp){
+  const statusEl = document.getElementById("busStatus");
+
+  if(!status){
+    statusEl.innerText = "";
+    return;
+  }
+
+  if(status === "live"){
+    statusEl.innerText = "● LIVE";
+    statusEl.style.background = "rgba(16,185,129,0.15)";
+    statusEl.style.color = "#10b981";
+  } else {
+    statusEl.innerText = `● OFFLINE — Last seen ${formatLastSeenLabel(timestamp)}`;
+    statusEl.style.background = "rgba(234,179,8,0.15)";
+    statusEl.style.color = "#eab308";
+  }
+}
+  
+</script>
+
+<script>
+const modeSwitchLabel=document.getElementById("modeSwitchLabel");
+let switchTouchStartX=0;
+
+modeSwitchLabel.addEventListener("touchstart",(event)=>{
+  switchTouchStartX=event.touches[0].clientX;
+},{passive:true});
+
+modeSwitchLabel.addEventListener("touchend",(event)=>{
+  const deltaX=event.changedTouches[0].clientX-switchTouchStartX;
+  const modeToggle=document.getElementById("modeToggle");
+  if(deltaX>20&&!modeToggle.checked){
+    handleModeSwitch(true);
+  }else if(deltaX<-20&&modeToggle.checked){
+    handleModeSwitch(false);
+  }
+},{passive:true});
+</script>
+
+</body>
+</html>
