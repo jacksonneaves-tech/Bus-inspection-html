@@ -200,18 +200,6 @@ h1{text-align:center;}
   text-align:center;
 }
 
-.bus-id-label{
-  background:rgba(15,23,42,0.92);
-  border:1px solid var(--border-soft);
-  color:var(--text-light);
-  border-radius:10px;
-  padding:5px 10px;
-  font-size:13px;
-  font-weight:600;
-  letter-spacing:0.3px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.35);
-}
-
 @keyframes floatBus{
   0%{transform:translateY(0);}
   50%{transform:translateY(-5px);}
@@ -397,7 +385,7 @@ body.landscape-trial-enabled .page2-map-wrap{
 
 <script>
 const BACKEND="https://ptv-gtfs-bus-backend.onrender.com";
-const ENABLE_LANDSCAPE_TABLET_LAYOUT=true;
+const ENABLE_LANDSCAPE_TABLET_LAYOUT=true; // Set to false to revert this trial split view.
 
 let fleetNumber="";
 let inputMode="fleet";
@@ -405,13 +393,12 @@ let inputMode="fleet";
 if(ENABLE_LANDSCAPE_TABLET_LAYOUT){
   document.body.classList.add("landscape-trial-enabled");
 }
-
 let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false,currentOperator="";
 let deviceHeading=null;
 let motionHeading=null;
 let compassListener=null;
 
-/* ================= MODE ================= */
+/* ===== MODE TOGGLE ===== */
 function toggleMode(){
   clearFleet();
   const title=document.getElementById("pageTitle");
@@ -424,16 +411,18 @@ function toggleMode(){
     inputMode="rego";
     modeToggle.checked=true;
     modeLogo.src="logos/nsw.png";
-    title.innerText="Enter NSW Rego";
+    modeLogo.alt="NSW logo";
     vicLabel.classList.remove("active");
     nswLabel.classList.add("active");
+    title.innerText="Enter NSW Rego";
   }else{
     inputMode="fleet";
     modeToggle.checked=false;
     modeLogo.src="logos/vic.png";
-    title.innerText="Enter Fleet Number";
+    modeLogo.alt="Victoria logo";
     nswLabel.classList.remove("active");
     vicLabel.classList.add("active");
+    title.innerText="Enter Fleet Number";
   }
 }
 
@@ -442,29 +431,27 @@ function handleModeSwitch(isNsw){
   toggleMode();
 }
 
-/* ================= KEYPAD ================= */
+/* ===== KEYPAD ===== */
 function addDigit(n){
   if(fleetNumber.length>=8)return;
   fleetNumber+=n;
   document.getElementById("fleetDisplay").innerText=fleetNumber;
 }
-
 function backspace(){
   fleetNumber=fleetNumber.slice(0,-1);
   document.getElementById("fleetDisplay").innerText=fleetNumber;
 }
-
 function clearFleet(){
   fleetNumber="";
   document.getElementById("fleetDisplay").innerText="";
 }
 
-/* ================= FIND BUS ================= */
+/* ===== FIND BUS ===== */
 async function findBus(){
   if(!fleetNumber) return alert("Enter number.");
 
   /* ===== SECRET FEATURE ===== */
-  if(fleetNumber==="0000"){
+  if(fleetNumber === "0000"){
     await findNearestBus();
     return;
   }
@@ -474,10 +461,18 @@ async function findBus(){
     const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
     const data=await res.json();
 
-    if(data.error) return alert("NSW bus not found.");
+    if(data.error){
+      return alert("NSW bus not found.");
+    }
 
     if(data.single){
-      showBusOnMap(data.latitude,data.longitude,"nsw",data.status,data.timestamp);
+      showBusOnMap(
+        data.latitude,
+        data.longitude,
+        "nsw",
+        data.status,
+        data.timestamp
+      );
       return;
     }
 
@@ -498,6 +493,7 @@ async function findBus(){
         container.appendChild(btn);
       });
     }
+
     return;
   }
 
@@ -528,7 +524,36 @@ async function findBus(){
   }
 }
 
-/* ===== SECRET NEAREST BUS ===== */
+async function loadBus(fleet,operator){
+  const res=await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
+  const data=await res.json();
+  if(data.error)return alert("Bus not active.");
+  showBusOnMap(
+  data.latitude,
+  data.longitude,
+  operator,
+  data.status,
+  data.timestamp
+);
+}
+  async function loadNswExact(rego){
+  const res=await fetch(`${BACKEND}/nsw-exact/${rego}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  showBusOnMap(
+    data.latitude,
+    data.longitude,
+    "nsw",
+    data.status,
+    data.timestamp
+  );
+}
+
+  /* ===== SECRET NEAREST BUS ===== */
 async function findNearestBus(){
   if(!navigator.geolocation){
     alert("Geolocation not supported.");
@@ -539,37 +564,305 @@ async function findNearestBus(){
     const lat=pos.coords.latitude;
     const lng=pos.coords.longitude;
 
-    const res=await fetch(`${BACKEND}/nearest?lat=${lat}&lng=${lng}`);
-    const data=await res.json();
+    try{
+      const res=await fetch(`${BACKEND}/nearest?lat=${lat}&lng=${lng}`);
+      const data=await res.json();
 
-    if(data.error) return alert("Nearest bus unavailable.");
+      if(data.error){
+        alert("Nearest bus unavailable.");
+        return;
+      }
 
-    showBusOnMap(
-      data.latitude,
-      data.longitude,
-      data.operator||"vic",
-      data.status,
-      data.timestamp
-    );
+      showBusOnMap(
+        data.latitude,
+        data.longitude,
+        data.state === "NSW" ? "nsw" : "vic",
+        data.status,
+        data.timestamp
+      );
+
+    }catch(err){
+      alert("Nearest lookup failed.");
+    }
+
   },()=>{
     alert("Location permission denied.");
   },{enableHighAccuracy:true});
 }
+  
+/* ===== MAP ===== */
+function showBusOnMap(lat,lng,operator,status,timestamp){
+  document.getElementById("page1").classList.add("hidden");
+  document.getElementById("page2").classList.remove("hidden");
 
-/* ===== LOADERS ===== */
-async function loadBus(fleet,operator){
-  const res=await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
-  const data=await res.json();
-  if(data.error)return alert("Bus not active.");
-  showBusOnMap(data.latitude,data.longitude,operator,data.status,data.timestamp);
+  currentOperator=operator||"";
+  renderOperatorLogo(currentOperator);
+  resetDirectionsState();
+
+  if(map)map.remove();
+  map=L.map("map").setView([lat,lng],16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  const icon=L.divIcon({
+    html:`<div class="bus-marker">🚌</div>`,
+    className:"",
+    iconSize:[60,60],
+    iconAnchor:[30,30]
+  });
+
+  marker=L.marker([lat,lng],{icon}).addTo(map);
+  busLatLng=L.latLng(lat,lng);
+  updateBusStatus(status, timestamp);
 }
 
-async function loadNswExact(rego){
-  const res=await fetch(`${BACKEND}/nsw-exact/${rego}`);
-  const data=await res.json();
-  if(data.error)return alert("NSW bus not found.");
-  showBusOnMap(data.latitude,data.longitude,"nsw",data.status,data.timestamp);
+/* ===== DIRECTIONS ===== */
+
+function renderOperatorLogo(operator){
+  const logoEl=document.getElementById("operatorLogo");
+  const logoMap=[
+    {match:"ventura",file:"ventura.png",alt:"Ventura"},
+    {match:"dyson",file:"dysons.png",alt:"Dysons"},
+    {match:"skybus",file:"skybus.png",alt:"SkyBus"},
+    {match:"cdc",file:"cdc.png",alt:"CDC"},
+    {match:"kinetic",file:"kinetic.png",alt:"Kinetic"},
+    {match:"nsw",file:"nsw.png",alt:"Transport for NSW"}
+  ];
+
+  const key=(operator||"").toLowerCase();
+  const found=logoMap.find(item=>key.includes(item.match));
+
+  if(found){
+    logoEl.innerHTML=`<img src="logos/${found.file}" alt="${found.alt} logo">`;
+  }else{
+    logoEl.innerHTML="";
+  }
 }
+
+function resetDirectionsState(){
+  directionsEnabled=false;
+  document.getElementById("directionsBtn").innerText="Directions to Bus";
+  document.getElementById("navOverlay").classList.add("hidden");
+
+  if(watchId){
+    navigator.geolocation.clearWatch(watchId);
+    watchId=null;
+  }
+  if(pathLine&&map)map.removeLayer(pathLine);
+  if(userMarker&&map)map.removeLayer(userMarker);
+
+  pathLine=null;
+  userMarker=null;
+  userLatLng=null;
+  stopCompass();
+}
+
+function getDirectionLabel(from,to){
+  const latDiff=to.lat-from.lat;
+  const lngDiff=to.lng-from.lng;
+  const ns=latDiff>=0?"N":"S";
+  const ew=lngDiff>=0?"E":"W";
+  return `${ns}/${ew}`;
+}
+
+function normalizeHeading(deg){
+  return ((deg%360)+360)%360;
+}
+
+function getBearing(from,to){
+  const fromLat=from.lat*Math.PI/180;
+  const toLat=to.lat*Math.PI/180;
+  const dLng=(to.lng-from.lng)*Math.PI/180;
+  const y=Math.sin(dLng)*Math.cos(toLat);
+  const x=Math.cos(fromLat)*Math.sin(toLat)-Math.sin(fromLat)*Math.cos(toLat)*Math.cos(dLng);
+  return normalizeHeading(Math.atan2(y,x)*180/Math.PI);
+}
+
+function resolveDeviceHeading(event){
+  if(typeof event.webkitCompassHeading==="number"){
+    return normalizeHeading(event.webkitCompassHeading);
+  }
+
+  if(typeof event.alpha==="number"){
+    return normalizeHeading(360-event.alpha);
+  }
+
+  return null;
+}
+
+async function startCompass(){
+  if(compassListener)return;
+
+  if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+    try{
+      const permission=await DeviceOrientationEvent.requestPermission();
+      if(permission!=="granted")return;
+    }catch(_err){
+      return;
+    }
+  }
+
+  compassListener=(event)=>{
+    const heading=resolveDeviceHeading(event);
+    if(heading!==null){
+      deviceHeading=heading;
+      updateNavOverlay();
+    }
+  };
+
+  window.addEventListener("deviceorientationabsolute",compassListener,true);
+  window.addEventListener("deviceorientation",compassListener,true);
+}
+
+function stopCompass(){
+  if(!compassListener)return;
+  window.removeEventListener("deviceorientationabsolute",compassListener,true);
+  window.removeEventListener("deviceorientation",compassListener,true);
+  compassListener=null;
+  deviceHeading=null;
+  motionHeading=null;
+}
+
+function formatDistanceLabel(distanceMeters){
+  if(distanceMeters<=999){
+    return `${distanceMeters}m`;
+  }
+
+  return `${(distanceMeters/1000).toFixed(1)}km`;
+}
+
+function formatLastSeenLabel(timestamp){
+  const mins=Math.max(0,Math.floor((Date.now()-timestamp)/60000));
+
+  if(mins<60){
+    return `${mins} min${mins!==1?"s":""} ago`;
+  }
+
+  const hours=Math.floor(mins/60);
+  if(hours<24){
+    return `${hours} hour${hours!==1?"s":""} ago`;
+  }
+
+  const days=Math.floor(hours/24);
+  return `${days} day${days!==1?"s":""} ago`;
+}
+
+function updateNavOverlay(){
+  if(!userLatLng||!busLatLng||!map)return;
+
+  const distance=Math.round(userLatLng.distanceTo(busLatLng));
+  const direction=getDirectionLabel(userLatLng,busLatLng);
+  document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
+
+  const bearingToBus=getBearing(userLatLng,busLatLng);
+  const heading=deviceHeading??motionHeading;
+  const deg=heading===null?bearingToBus:normalizeHeading(bearingToBus-heading);
+  document.getElementById("navArrow").style.transform=`rotate(${deg}deg)`;
+}
+
+
+function toggleDirections(){
+  directionsEnabled=!directionsEnabled;
+  document.getElementById("directionsBtn").innerText=
+    directionsEnabled?"Hide Directions":"Directions to Bus";
+
+  if(!directionsEnabled){
+    resetDirectionsState();
+    return;
+  }
+
+  document.getElementById("navOverlay").classList.remove("hidden");
+  startCompass();
+
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    userLatLng=L.latLng(pos.coords.latitude,pos.coords.longitude);
+    motionHeading=typeof pos.coords.heading==="number"&&!Number.isNaN(pos.coords.heading)
+      ?normalizeHeading(pos.coords.heading)
+      :null;
+
+    if(!userMarker){
+      userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981"}).addTo(map);
+    }else userMarker.setLatLng(userLatLng);
+
+    if(!pathLine){
+      pathLine=L.polyline([userLatLng,busLatLng],{color:"#60a5fa"}).addTo(map);
+    }else pathLine.setLatLngs([userLatLng,busLatLng]);
+
+    updateNavOverlay();
+  },()=>{
+    alert("Location permission denied");
+    resetDirectionsState();
+  },{enableHighAccuracy:true});
+}
+
+/* ===== NAVIGATION ===== */
+function returnToKeypad(){
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("operatorBackButton").classList.add("hidden");
+  document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
+}
+
+function goBack(){
+  document.getElementById("page2").classList.add("hidden");
+  document.getElementById("page1").classList.remove("hidden");
+
+  fleetNumber="";
+  document.getElementById("fleetDisplay").innerText="";
+
+  document.getElementById("operatorSection").innerHTML="";
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("operatorBackButton").classList.add("hidden");
+
+  document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
+
+  resetDirectionsState();
+  document.getElementById("operatorLogo").innerHTML="";
+
+  if(map){map.remove();map=null;}
+}
+  
+  function updateBusStatus(status, timestamp){
+  const statusEl = document.getElementById("busStatus");
+
+  if(!status){
+    statusEl.innerText = "";
+    return;
+  }
+
+  if(status === "live"){
+    statusEl.innerText = "● LIVE";
+    statusEl.style.background = "rgba(16,185,129,0.15)";
+    statusEl.style.color = "#10b981";
+  } else {
+    statusEl.innerText = `● OFFLINE — Last seen ${formatLastSeenLabel(timestamp)}`;
+    statusEl.style.background = "rgba(234,179,8,0.15)";
+    statusEl.style.color = "#eab308";
+  }
+}
+  
+</script>
+
+<script>
+const modeSwitchLabel=document.getElementById("modeSwitchLabel");
+let switchTouchStartX=0;
+
+modeSwitchLabel.addEventListener("touchstart",(event)=>{
+  switchTouchStartX=event.touches[0].clientX;
+},{passive:true});
+
+modeSwitchLabel.addEventListener("touchend",(event)=>{
+  const deltaX=event.changedTouches[0].clientX-switchTouchStartX;
+  const modeToggle=document.getElementById("modeToggle");
+  if(deltaX>20&&!modeToggle.checked){
+    handleModeSwitch(true);
+  }else if(deltaX<-20&&modeToggle.checked){
+    handleModeSwitch(false);
+  }
+},{passive:true});
 </script>
 
 </body>
