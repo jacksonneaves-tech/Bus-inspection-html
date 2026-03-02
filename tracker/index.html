@@ -11,6 +11,55 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
+  /* ===== NEAREST BUS EASTER EGG ===== */
+
+.nearest-overlay{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(145deg,#0f172a,#1e293b);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  z-index:9999;
+}
+
+.nearest-overlay.hidden{
+  display:none;
+}
+
+.nearest-title{
+  font-size:22px;
+  font-weight:600;
+  margin-bottom:30px;
+  text-align:center;
+}
+
+.emoji-rain{
+  position:relative;
+  width:100%;
+  height:200px;
+  overflow:hidden;
+}
+
+.floating-emoji{
+  position:absolute;
+  font-size:32px;
+  animation:floatUp 3s linear infinite;
+}
+
+@keyframes floatUp{
+  0%{
+    transform:translateY(150px) rotate(0deg);
+    opacity:0;
+  }
+  20%{opacity:1;}
+  100%{
+    transform:translateY(-200px) rotate(360deg);
+    opacity:0;
+  }
+}
+  
 <style>
 :root {
   --bg-dark:#0f172a;
@@ -381,6 +430,14 @@ body.landscape-trial-enabled .page2-map-wrap{
 </div>
 </div>
 
+  <!-- NEAREST BUS EASTER EGG OVERLAY -->
+<div id="nearestOverlay" class="nearest-overlay hidden">
+  <div class="nearest-content">
+    <div class="nearest-title">🔎 Hunting the Nearest Bus...</div>
+    <div class="emoji-rain" id="emojiRain"></div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
@@ -555,10 +612,13 @@ async function loadBus(fleet,operator){
 
   /* ===== SECRET NEAREST BUS ===== */
 async function findNearestBus(){
+
   if(!navigator.geolocation){
     alert("Geolocation not supported.");
     return;
   }
+
+  showNearestOverlay();  // 👈 START ANIMATION
 
   navigator.geolocation.getCurrentPosition(async(pos)=>{
     const lat=pos.coords.latitude;
@@ -569,29 +629,64 @@ async function findNearestBus(){
       const data=await res.json();
 
       if(data.error){
+        hideNearestOverlay();
         alert("Nearest bus unavailable.");
         return;
       }
+
+      hideNearestOverlay(); // 👈 STOP ANIMATION
 
       showBusOnMap(
         data.latitude,
         data.longitude,
         data.state === "NSW" ? "nsw" : "vic",
         data.status,
-        data.timestamp
+        data.timestamp,
+        {
+          nearest:true,
+          identifier:data.rego,
+          state:data.state
+        }
       );
 
     }catch(err){
+      hideNearestOverlay();
       alert("Nearest lookup failed.");
     }
 
   },()=>{
+    hideNearestOverlay();
     alert("Location permission denied.");
   },{enableHighAccuracy:true});
 }
+
+  /* ===== OVERLAY CONTROLS ===== */
+
+function showNearestOverlay(){
+  const overlay=document.getElementById("nearestOverlay");
+  const rain=document.getElementById("emojiRain");
+
+  overlay.classList.remove("hidden");
+  rain.innerHTML="";
+
+  const emojis=["🚌","🐣","🥚","🚍","🐰"];
+
+  for(let i=0;i<25;i++){
+    const span=document.createElement("span");
+    span.className="floating-emoji";
+    span.innerText=emojis[Math.floor(Math.random()*emojis.length)];
+    span.style.left=Math.random()*100+"%";
+    span.style.animationDelay=Math.random()*3+"s";
+    rain.appendChild(span);
+  }
+}
+
+function hideNearestOverlay(){
+  document.getElementById("nearestOverlay").classList.add("hidden");
+}
   
 /* ===== MAP ===== */
-function showBusOnMap(lat,lng,operator,status,timestamp){
+function showBusOnMap(lat,lng,operator,status,timestamp,extra=null){
   document.getElementById("page1").classList.add("hidden");
   document.getElementById("page2").classList.remove("hidden");
 
@@ -614,6 +709,12 @@ function showBusOnMap(lat,lng,operator,status,timestamp){
   marker=L.marker([lat,lng],{icon}).addTo(map);
   busLatLng=L.latLng(lat,lng);
   updateBusStatus(status, timestamp);
+  
+  /* ===== NEAREST BUS LABEL ===== */
+if(extra && extra.nearest){
+  const stateLabel = extra.state === "NSW" ? "NSW" : "VIC";
+  const headingText = `Nearest Bus – ${stateLabel} ${extra.identifier}`;
+  document.getElementById("busStatus").innerText = headingText;
 }
 
 /* ===== DIRECTIONS ===== */
