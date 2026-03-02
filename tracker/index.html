@@ -8,6 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
 <link rel="apple-touch-icon" href="icon-192.png">
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
@@ -20,8 +21,6 @@
   --text-muted:#94a3b8;
   --border-soft:rgba(255,255,255,0.08);
 }
-
-/* ===== ORIGINAL STYLES (UNCHANGED) ===== */
 
 body{
   margin:0;
@@ -49,6 +48,21 @@ body{
   box-shadow:0 20px 40px rgba(0,0,0,0.4);
   border:1px solid var(--border-soft);
   min-height:520px;
+}
+
+.mode-logo-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:92px;
+  margin-bottom:8px;
+}
+
+.mode-logo-wrap img{
+  max-height:80px;
+  max-width:220px;
+  width:auto;
+  object-fit:contain;
 }
 
 h1{text-align:center;}
@@ -95,6 +109,78 @@ h1{text-align:center;}
   cursor:pointer;
 }
 
+.find-btn:hover,.back-btn:hover{
+  background:var(--accent-blue-hover);
+}
+
+.mode-switch-wrap{
+  margin-top:15px;
+  margin-bottom:18px;
+  display:flex;
+  justify-content:center;
+}
+
+.mode-switch{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  user-select:none;
+  font-size:14px;
+  color:var(--text-muted);
+}
+
+.mode-switch input{display:none;}
+
+.mode-slider{
+  width:58px;
+  height:30px;
+  background:#f97316;
+  border:1px solid var(--border-soft);
+  border-radius:999px;
+  position:relative;
+  transition:all 0.2s ease;
+  cursor:pointer;
+}
+
+.mode-slider::before{
+  content:"";
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#f8fafc;
+  transition:transform 0.2s ease;
+}
+
+.mode-switch input:checked + .mode-slider{
+  background:var(--accent-blue);
+}
+
+.mode-switch input:checked + .mode-slider::before{
+  transform:translateX(28px);
+}
+
+.mode-switch .active{
+  color:var(--text-light);
+  font-weight:600;
+}
+
+.operator-buttons button{
+  width:100%;
+  margin-top:10px;
+  padding:14px;
+  border-radius:12px;
+  border:1px solid var(--border-soft);
+  background:transparent;
+  color:var(--text-light);
+  cursor:pointer;
+}
+
+.operator-buttons button:hover{background:var(--accent-blue);}
+
 .hidden{display:none;}
 
 #map{
@@ -102,6 +188,11 @@ h1{text-align:center;}
   border-radius:16px;
   margin-bottom:15px;
 }
+
+#page2{position:relative;}
+
+.operator-logo{text-align:center;margin-bottom:15px;}
+.operator-logo img{max-height:80px;}
 
 .bus-marker{
   font-size:42px;
@@ -115,48 +206,97 @@ h1{text-align:center;}
   100%{transform:translateY(0);}
 }
 
-/* ===== NEW: EASTER EGG OVERLAY ===== */
-
-.nearest-overlay{
-  position:fixed;
-  inset:0;
-  background:linear-gradient(145deg,#0f172a,#1e293b);
+.nav-badge{
+  position:absolute;
+  top:115px;
+  right:12px;
+  z-index:500;
+  background:rgba(15,23,42,0.9);
+  border:1px solid var(--border-soft);
+  color:var(--text-light);
+  padding:8px 12px;
+  border-radius:12px;
+  font-size:14px;
   display:flex;
   align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  z-index:9999;
+  gap:8px;
 }
 
-.nearest-overlay.hidden{
-  display:none;
+.nav-badge.hidden{display:none;}
+.nav-badge .arrow{transition:transform 0.2s ease;}
+
+
+/* Trial layout for tablet landscape. Set ENABLE_LANDSCAPE_TABLET_LAYOUT=false in script to revert. */
+body.landscape-trial-enabled .page1-layout,
+body.landscape-trial-enabled .page2-layout{
+  display:block;
 }
 
-.nearest-title{
-  font-size:22px;
-  font-weight:600;
-  margin-bottom:30px;
-  text-align:center;
+body.landscape-trial-enabled .page1-primary,
+body.landscape-trial-enabled .page1-secondary,
+body.landscape-trial-enabled .page2-info,
+body.landscape-trial-enabled .page2-map-wrap{
+  min-width:0;
 }
 
-.emoji-rain{
+body.landscape-trial-enabled .page2-map-wrap{
   position:relative;
-  width:100%;
-  height:200px;
-  overflow:hidden;
 }
 
-.floating-emoji{
-  position:absolute;
-  font-size:32px;
-  animation:floatUp 3s linear infinite;
+@media (orientation: portrait){
+  #page2 .page2-layout{
+    display:flex;
+    flex-direction:column;
+  }
+
+  #page2 .page2-map-wrap{
+    order:-1;
+  }
 }
 
-@keyframes floatUp{
-  0%{transform:translateY(150px) rotate(0deg);opacity:0;}
-  20%{opacity:1;}
-  100%{transform:translateY(-200px) rotate(360deg);opacity:0;}
+@media (orientation: landscape) and (min-width: 900px){
+  body.landscape-trial-enabled .card{
+    max-width:980px;
+    min-height:auto;
+  }
+
+  body.landscape-trial-enabled .page1-layout,
+  body.landscape-trial-enabled .page2-layout{
+    display:grid;
+    grid-template-columns:minmax(280px,1fr) minmax(380px,1.2fr);
+    gap:22px;
+    align-items:start;
+  }
+
+  body.landscape-trial-enabled .page1-primary,
+  body.landscape-trial-enabled .page2-info{
+    position:sticky;
+    top:0;
+  }
+
+  body.landscape-trial-enabled .mode-logo-wrap{
+    min-height:110px;
+  }
+
+  body.landscape-trial-enabled .mode-switch-wrap{
+    margin-bottom:0;
+  }
+
+  body.landscape-trial-enabled #map{
+    height:520px;
+    margin-bottom:0;
+  }
+
+  body.landscape-trial-enabled #page2 .find-btn{
+    margin-top:12px;
+  }
+
+  body.landscape-trial-enabled #navOverlay{
+    top:12px;
+    right:12px;
+  }
 }
+
 </style>
 </head>
 
@@ -169,52 +309,129 @@ h1{text-align:center;}
 
 <!-- PAGE 1 -->
 <div id="page1">
-<h1>Enter Fleet Number</h1>
-<div class="fleet-display" id="fleetDisplay"></div>
+<div class="page1-layout">
+  <div class="page1-primary">
+    <div class="mode-logo-wrap" id="modeLogoWrap">
+      <img id="modeLogo" src="logos/vic.png" alt="Victoria logo">
+    </div>
+    <h1 id="pageTitle">Enter Fleet Number</h1>
 
-<div class="keypad">
-<button onclick="addDigit(1)">1</button>
-<button onclick="addDigit(2)">2</button>
-<button onclick="addDigit(3)">3</button>
-<button onclick="addDigit(4)">4</button>
-<button onclick="addDigit(5)">5</button>
-<button onclick="addDigit(6)">6</button>
-<button onclick="addDigit(7)">7</button>
-<button onclick="addDigit(8)">8</button>
-<button onclick="addDigit(9)">9</button>
-<button onclick="clearFleet()">C</button>
-<button onclick="addDigit(0)">0</button>
-<button onclick="backspace()">⌫</button>
+    <div class="fleet-display" id="fleetDisplay"></div>
+
+    <div class="mode-switch-wrap" id="modeToggleWrap">
+      <label class="mode-switch" id="modeSwitchLabel">
+        <span id="vicLabel" class="active">VIC</span>
+        <input type="checkbox" id="modeToggle" onchange="handleModeSwitch(this.checked)">
+        <span class="mode-slider"></span>
+        <span id="nswLabel">NSW</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="page1-secondary">
+    <div class="keypad" id="keypad">
+    <button onclick="addDigit(1)">1</button>
+    <button onclick="addDigit(2)">2</button>
+    <button onclick="addDigit(3)">3</button>
+    <button onclick="addDigit(4)">4</button>
+    <button onclick="addDigit(5)">5</button>
+    <button onclick="addDigit(6)">6</button>
+    <button onclick="addDigit(7)">7</button>
+    <button onclick="addDigit(8)">8</button>
+    <button onclick="addDigit(9)">9</button>
+    <button onclick="clearFleet()">C</button>
+    <button onclick="addDigit(0)">0</button>
+    <button onclick="backspace()">⌫</button>
+    </div>
+
+    <button class="find-btn" id="findButton" onclick="findBus()">Find Bus</button>
+
+    <div class="operator-buttons hidden" id="operatorSection"></div>
+    <button class="back-btn hidden" id="operatorBackButton" onclick="returnToKeypad()">Back</button>
+  </div>
 </div>
-
-<button class="find-btn" onclick="findBus()">Find Bus</button>
 </div>
 
 <!-- PAGE 2 -->
 <div id="page2" class="hidden">
-<div id="busStatus" style="text-align:center;font-weight:600;margin-bottom:10px;"></div>
-<div id="map"></div>
-<button class="find-btn" onclick="goBack()">Find Another Bus</button>
+<div class="page2-layout">
+  <div class="page2-info">
+    <div class="operator-logo" id="operatorLogo"></div>
+
+    <div id="busStatus" style="
+      margin-bottom:15px;
+      padding:10px;
+      border-radius:12px;
+      text-align:center;
+      font-weight:600;
+      border:1px solid var(--border-soft);
+    "></div>
+
+    <button class="find-btn" id="directionsBtn" onclick="toggleDirections()">Directions to Bus</button>
+    <button class="find-btn" onclick="goBack()">Find Another Bus</button>
+  </div>
+
+  <div class="page2-map-wrap">
+    <div id="map"></div>
+    <div id="navOverlay" class="nav-badge hidden"><span class="arrow" id="navArrow">➤</span><span id="navText">--</span></div>
+  </div>
+</div>
 </div>
 
 </div>
-</div>
-
-<!-- NEW OVERLAY -->
-<div id="nearestOverlay" class="nearest-overlay hidden">
-<div class="nearest-title">🔎 Hunting the Nearest Bus...</div>
-<div class="emoji-rain" id="emojiRain"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 const BACKEND="https://ptv-gtfs-bus-backend.onrender.com";
+const ENABLE_LANDSCAPE_TABLET_LAYOUT=true; // Set to false to revert this trial split view.
 
 let fleetNumber="";
-let map;
+let inputMode="fleet";
 
-/* ===== KEYPAD (UNCHANGED) ===== */
+if(ENABLE_LANDSCAPE_TABLET_LAYOUT){
+  document.body.classList.add("landscape-trial-enabled");
+}
+let map,marker,userMarker,pathLine,userLatLng,busLatLng,watchId=null,directionsEnabled=false,currentOperator="";
+let deviceHeading=null;
+let motionHeading=null;
+let compassListener=null;
+
+/* ===== MODE TOGGLE ===== */
+function toggleMode(){
+  clearFleet();
+  const title=document.getElementById("pageTitle");
+  const modeToggle=document.getElementById("modeToggle");
+  const modeLogo=document.getElementById("modeLogo");
+  const vicLabel=document.getElementById("vicLabel");
+  const nswLabel=document.getElementById("nswLabel");
+
+  if(inputMode==="fleet"){
+    inputMode="rego";
+    modeToggle.checked=true;
+    modeLogo.src="logos/nsw.png";
+    modeLogo.alt="NSW logo";
+    vicLabel.classList.remove("active");
+    nswLabel.classList.add("active");
+    title.innerText="Enter NSW Rego";
+  }else{
+    inputMode="fleet";
+    modeToggle.checked=false;
+    modeLogo.src="logos/vic.png";
+    modeLogo.alt="Victoria logo";
+    nswLabel.classList.remove("active");
+    vicLabel.classList.add("active");
+    title.innerText="Enter Fleet Number";
+  }
+}
+
+function handleModeSwitch(isNsw){
+  if((isNsw&&inputMode==="rego")||(!isNsw&&inputMode==="fleet"))return;
+  toggleMode();
+}
+
+/* ===== KEYPAD ===== */
 function addDigit(n){
   if(fleetNumber.length>=8)return;
   fleetNumber+=n;
@@ -229,74 +446,112 @@ function clearFleet(){
   document.getElementById("fleetDisplay").innerText="";
 }
 
-/* ===== FIND BUS (ONLY ADDITION: 0000 CHECK) ===== */
+/* ===== FIND BUS ===== */
 async function findBus(){
   if(!fleetNumber)return alert("Enter number.");
 
-  if(fleetNumber==="0000"){
-    await findNearestBus();
+  if(inputMode==="rego"){
+  const res=await fetch(`${BACKEND}/nsw/${fleetNumber}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  if(data.single){
+    showBusOnMap(
+      data.latitude,
+      data.longitude,
+      "nsw",
+      data.status,
+      data.timestamp
+    );
     return;
   }
+
+  if(data.multiple){
+    const container=document.getElementById("operatorSection");
+    container.innerHTML="";
+    container.classList.remove("hidden");
+
+    document.getElementById("keypad").classList.add("hidden");
+    document.getElementById("findButton").classList.add("hidden");
+    document.getElementById("modeToggleWrap").classList.add("hidden");
+    document.getElementById("operatorBackButton").classList.remove("hidden");
+
+    data.options.forEach(rego=>{
+      const btn=document.createElement("button");
+      btn.innerText=rego;
+      btn.onclick=()=>loadNswExact(rego);
+      container.appendChild(btn);
+    });
+  }
+
+  return;
+}
 
   const res=await fetch(`${BACKEND}/operators/${fleetNumber}`);
   const data=await res.json();
   if(data.error)return alert("Fleet not found.");
 
-  const res2=await fetch(`${BACKEND}/bus/${fleetNumber}/${data.operators[0]}`);
-  const data2=await res2.json();
-  if(data2.error)return alert("Bus not active.");
+  if(data.operators.length===1){
+    loadBus(fleetNumber,data.operators[0]);
+  }else{
+    const container=document.getElementById("operatorSection");
+    container.innerHTML="";
+    container.classList.remove("hidden");
 
-  showBusOnMap(data2.latitude,data2.longitude,data2.status,data2.rego,"VIC");
-}
+    document.getElementById("keypad").classList.add("hidden");
+    document.getElementById("findButton").classList.add("hidden");
+    document.getElementById("modeToggleWrap").classList.add("hidden");
+    document.getElementById("operatorBackButton").classList.remove("hidden");
 
-/* ===== NEW NEAREST BUS FUNCTION ===== */
-async function findNearestBus(){
-  showNearestOverlay();
-
-  navigator.geolocation.getCurrentPosition(async(pos)=>{
-    const lat=pos.coords.latitude;
-    const lng=pos.coords.longitude;
-
-    const res=await fetch(`${BACKEND}/nearest?lat=${lat}&lng=${lng}`);
-    const data=await res.json();
-
-    hideNearestOverlay();
-
-    showBusOnMap(data.latitude,data.longitude,data.status,data.rego,data.state);
-
-  },()=>{
-    hideNearestOverlay();
-    alert("Location denied");
-  },{enableHighAccuracy:true});
-}
-
-/* ===== OVERLAY FUNCTIONS ===== */
-function showNearestOverlay(){
-  const overlay=document.getElementById("nearestOverlay");
-  const rain=document.getElementById("emojiRain");
-  overlay.classList.remove("hidden");
-  rain.innerHTML="";
-  const emojis=["🚌","🐣","🥚","🚍","🐰"];
-  for(let i=0;i<25;i++){
-    const span=document.createElement("span");
-    span.className="floating-emoji";
-    span.innerText=emojis[Math.floor(Math.random()*emojis.length)];
-    span.style.left=Math.random()*100+"%";
-    span.style.animationDelay=Math.random()*3+"s";
-    rain.appendChild(span);
+    data.operators.forEach(op=>{
+      const btn=document.createElement("button");
+      btn.innerText=op;
+      btn.onclick=()=>loadBus(fleetNumber,op);
+      container.appendChild(btn);
+    });
   }
 }
-function hideNearestOverlay(){
-  document.getElementById("nearestOverlay").classList.add("hidden");
+
+async function loadBus(fleet,operator){
+  const res=await fetch(`${BACKEND}/bus/${fleet}/${operator}`);
+  const data=await res.json();
+  if(data.error)return alert("Bus not active.");
+  showBusOnMap(
+  data.latitude,
+  data.longitude,
+  operator,
+  data.status,
+  data.timestamp
+);
+}
+  async function loadNswExact(rego){
+  const res=await fetch(`${BACKEND}/nsw-exact/${rego}`);
+  const data=await res.json();
+
+  if(data.error){
+    return alert("NSW bus not found.");
+  }
+
+  showBusOnMap(
+    data.latitude,
+    data.longitude,
+    "nsw",
+    data.status,
+    data.timestamp
+  );
 }
 
 /* ===== MAP ===== */
-function showBusOnMap(lat,lng,status,identifier,state){
+function showBusOnMap(lat,lng,operator,status,timestamp){
   document.getElementById("page1").classList.add("hidden");
   document.getElementById("page2").classList.remove("hidden");
 
-  document.getElementById("busStatus").innerText=
-    `Nearest Bus – ${state} ${identifier}`;
+  currentOperator=operator||"";
+  renderOperatorLogo(currentOperator);
+  resetDirectionsState();
 
   if(map)map.remove();
   map=L.map("map").setView([lat,lng],16);
@@ -310,15 +565,198 @@ function showBusOnMap(lat,lng,status,identifier,state){
     iconAnchor:[30,30]
   });
 
-  L.marker([lat,lng],{icon}).addTo(map);
+  marker=L.marker([lat,lng],{icon}).addTo(map);
+  busLatLng=L.latLng(lat,lng);
+  updateBusStatus(status, timestamp);
+}
+
+/* ===== DIRECTIONS ===== */
+
+function renderOperatorLogo(operator){
+  const logoEl=document.getElementById("operatorLogo");
+  const logoMap=[
+    {match:"ventura",file:"ventura.png",alt:"Ventura"},
+    {match:"dyson",file:"dysons.png",alt:"Dysons"},
+    {match:"skybus",file:"skybus.png",alt:"SkyBus"},
+    {match:"cdc",file:"cdc.png",alt:"CDC"},
+    {match:"kinetic",file:"kinetic.png",alt:"Kinetic"},
+    {match:"nsw",file:"nsw.png",alt:"Transport for NSW"}
+  ];
+
+  const key=(operator||"").toLowerCase();
+  const found=logoMap.find(item=>key.includes(item.match));
+
+  if(found){
+    logoEl.innerHTML=`<img src="logos/${found.file}" alt="${found.alt} logo">`;
+  }else{
+    logoEl.innerHTML="";
+  }
+}
+
+function resetDirectionsState(){
+  directionsEnabled=false;
+  document.getElementById("directionsBtn").innerText="Directions to Bus";
+  document.getElementById("navOverlay").classList.add("hidden");
+
+  if(watchId){
+    navigator.geolocation.clearWatch(watchId);
+    watchId=null;
+  }
+  if(pathLine&&map)map.removeLayer(pathLine);
+  if(userMarker&&map)map.removeLayer(userMarker);
+
+  pathLine=null;
+  userMarker=null;
+  userLatLng=null;
+  stopCompass();
+}
+
+function getDirectionLabel(from,to){
+  const latDiff=to.lat-from.lat;
+  const lngDiff=to.lng-from.lng;
+  const ns=latDiff>=0?"N":"S";
+  const ew=lngDiff>=0?"E":"W";
+  return `${ns}/${ew}`;
+}
+
+function normalizeHeading(deg){
+  return ((deg%360)+360)%360;
+}
+
+function getBearing(from,to){
+  const fromLat=from.lat*Math.PI/180;
+  const toLat=to.lat*Math.PI/180;
+  const dLng=(to.lng-from.lng)*Math.PI/180;
+  const y=Math.sin(dLng)*Math.cos(toLat);
+  const x=Math.cos(fromLat)*Math.sin(toLat)-Math.sin(fromLat)*Math.cos(toLat)*Math.cos(dLng);
+  return normalizeHeading(Math.atan2(y,x)*180/Math.PI);
+}
+
+function resolveDeviceHeading(event){
+  if(typeof event.webkitCompassHeading==="number"){
+    return normalizeHeading(event.webkitCompassHeading);
+  }
+
+  if(typeof event.alpha==="number"){
+    return normalizeHeading(360-event.alpha);
+  }
+
+  return null;
+}
+
+async function startCompass(){
+  if(compassListener)return;
+
+  if(typeof DeviceOrientationEvent!=="undefined"&&typeof DeviceOrientationEvent.requestPermission==="function"){
+    try{
+      const permission=await DeviceOrientationEvent.requestPermission();
+      if(permission!=="granted")return;
+    }catch(_err){
+      return;
+    }
+  }
+
+  compassListener=(event)=>{
+    const heading=resolveDeviceHeading(event);
+    if(heading!==null){
+      deviceHeading=heading;
+      updateNavOverlay();
+    }
+  };
+
+  window.addEventListener("deviceorientationabsolute",compassListener,true);
+  window.addEventListener("deviceorientation",compassListener,true);
+}
+
+function stopCompass(){
+  if(!compassListener)return;
+  window.removeEventListener("deviceorientationabsolute",compassListener,true);
+  window.removeEventListener("deviceorientation",compassListener,true);
+  compassListener=null;
+  deviceHeading=null;
+  motionHeading=null;
+}
+
+function formatDistanceLabel(distanceMeters){
+  if(distanceMeters<=999){
+    return `${distanceMeters}m`;
+  }
+
+  return `${(distanceMeters/1000).toFixed(1)}km`;
+}
+
+function formatLastSeenLabel(timestamp){
+  const mins=Math.max(0,Math.floor((Date.now()-timestamp)/60000));
+
+  if(mins<60){
+    return `${mins} min${mins!==1?"s":""} ago`;
+  }
+
+  const hours=Math.floor(mins/60);
+  if(hours<24){
+    return `${hours} hour${hours!==1?"s":""} ago`;
+  }
+
+  const days=Math.floor(hours/24);
+  return `${days} day${days!==1?"s":""} ago`;
+}
+
+function updateNavOverlay(){
+  if(!userLatLng||!busLatLng||!map)return;
+
+  const distance=Math.round(userLatLng.distanceTo(busLatLng));
+  const direction=getDirectionLabel(userLatLng,busLatLng);
+  document.getElementById("navText").innerText=`${formatDistanceLabel(distance)} ${direction}`;
+
+  const bearingToBus=getBearing(userLatLng,busLatLng);
+  const heading=deviceHeading??motionHeading;
+  const deg=heading===null?bearingToBus:normalizeHeading(bearingToBus-heading);
+  document.getElementById("navArrow").style.transform=`rotate(${deg}deg)`;
+}
+
+
+function toggleDirections(){
+  directionsEnabled=!directionsEnabled;
+  document.getElementById("directionsBtn").innerText=
+    directionsEnabled?"Hide Directions":"Directions to Bus";
+
+  if(!directionsEnabled){
+    resetDirectionsState();
+    return;
+  }
+
+  document.getElementById("navOverlay").classList.remove("hidden");
+  startCompass();
+
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    userLatLng=L.latLng(pos.coords.latitude,pos.coords.longitude);
+    motionHeading=typeof pos.coords.heading==="number"&&!Number.isNaN(pos.coords.heading)
+      ?normalizeHeading(pos.coords.heading)
+      :null;
+
+    if(!userMarker){
+      userMarker=L.circleMarker(userLatLng,{radius:6,color:"#10b981"}).addTo(map);
+    }else userMarker.setLatLng(userLatLng);
+
+    if(!pathLine){
+      pathLine=L.polyline([userLatLng,busLatLng],{color:"#60a5fa"}).addTo(map);
+    }else pathLine.setLatLngs([userLatLng,busLatLng]);
+
+    updateNavOverlay();
+  },()=>{
+    alert("Location permission denied");
+    resetDirectionsState();
+  },{enableHighAccuracy:true});
+}
+
+/* ===== NAVIGATION ===== */
+function returnToKeypad(){
+  document.getElementById("operatorSection").classList.add("hidden");
+  document.getElementById("operatorBackButton").classList.add("hidden");
+  document.getElementById("keypad").classList.remove("hidden");
+  document.getElementById("findButton").classList.remove("hidden");
+  document.getElementById("modeToggleWrap").classList.remove("hidden");
 }
 
 function goBack(){
-  document.getElementById("page2").classList.add("hidden");
-  document.getElementById("page1").classList.remove("hidden");
-  clearFleet();
-}
-</script>
-
-</body>
-</html>
+  document.getElementById("pag
